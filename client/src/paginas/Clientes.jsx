@@ -1,16 +1,23 @@
-// Cartera de clientes (personas físicas y morales).
+// Cartera de clientes: fichas editoriales, filtros en pastilla e inspector lateral con WhatsApp.
 import { useEffect, useState } from 'react';
-import { LuPencil, LuTrash2, LuUserPlus, LuUsers } from 'react-icons/lu';
+import {
+  LuBuilding2, LuCopy, LuFileText, LuMapPin, LuMessageCircle, LuPencil, LuPhone, LuStore, LuTrash2, LuUser,
+  LuUserPlus, LuUsers,
+} from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
+import {
+  ChipsFiltro, copiarTexto, Drawer, EsqueletoFichas, Monograma, ResumenCatalogo, SwitchVista, tonoDeTexto,
+  useVistaCatalogo,
+} from '../componentes/Catalogo.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
 import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { useFormulario } from '../componentes/formulario.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import {
-  Boton, BotonIcono, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Panel, Segmentado, Vacio,
+  Boton, BotonIcono, Buscador, CabeceraPagina, Campo, Insignia, MensajeError, Panel, Vacio,
 } from '../componentes/ui.jsx';
-import { capitalizar, nombrePropio } from '../formato.js';
+import { capitalizar, nombrePropio, numero, telefonoWhatsApp } from '../formato.js';
 import { useApi, useRetardo } from '../hooks.js';
 import { useNavegar, useUbicacion } from '../router.jsx';
 
@@ -93,6 +100,95 @@ function FormularioCliente({ abierto, cliente, alCerrar, alGuardar, alEliminar }
   );
 }
 
+function InspectorCliente({ cliente, alCerrar, alEditar, alEliminar, avisar }) {
+  const { puede } = useSesion();
+  const wa = telefonoWhatsApp(cliente?.telefono);
+  const tono = cliente?.publicoGeneral ? 'oro' : cliente?.tipo === 'moral' ? 'cielo' : tonoDeTexto(cliente?.nombre);
+
+  return (
+    <Drawer
+      abierto={Boolean(cliente)}
+      alCerrar={alCerrar}
+      titulo={cliente ? (cliente.publicoGeneral ? 'Público en general' : nombrePropio(cliente.nombre)) : 'Cliente'}
+      subtitulo={cliente ? `Cliente #${cliente.id}` : undefined}
+      insignia={cliente && (
+        cliente.publicoGeneral
+          ? <Insignia tono="info" icono={false}>Mostrador</Insignia>
+          : <Insignia tono="neutro" icono={false}>{cliente.tipo === 'fisica' ? 'Persona física' : 'Persona moral'}</Insignia>
+      )}
+      monograma={cliente && (
+        <Monograma
+          texto={cliente.nombre}
+          tono={tono}
+          icono={cliente.publicoGeneral ? LuStore : cliente.tipo === 'moral' ? LuBuilding2 : undefined}
+          forma={cliente.tipo === 'fisica' && !cliente.publicoGeneral ? 'circulo' : 'suave'}
+          talla="grande"
+        />
+      )}
+      pie={cliente && (
+        <>
+          {!cliente.publicoGeneral && puede('ELIMINAR_CLIENTES') && (
+            <Boton variante="peligro-suave" icono={LuTrash2} onClick={() => alEliminar(cliente)} className="modal__accion-izq">
+              Eliminar
+            </Boton>
+          )}
+          {!cliente.publicoGeneral && puede('EDITAR_CLIENTES') && (
+            <Boton icono={LuPencil} onClick={() => alEditar(cliente)}>Editar</Boton>
+          )}
+          <Boton variante="primario" onClick={alCerrar}>Listo</Boton>
+        </>
+      )}
+    >
+      {cliente && (
+        <>
+          <div className="drawer__seccion">
+            <h3 className="drawer__seccion-titulo">Datos fiscales y contacto</h3>
+            <div className="drawer__datos">
+              <div className="drawer__dato">
+                <span className="drawer__dato-clave"><LuFileText aria-hidden="true" /> RFC</span>
+                <span className="drawer__dato-valor codigo-mono">{cliente.rfc ?? 'Sin RFC'}</span>
+              </div>
+              <div className="drawer__dato">
+                <span className="drawer__dato-clave"><LuPhone aria-hidden="true" /> Teléfono</span>
+                <span className="drawer__dato-valor numeros">{cliente.telefono ?? 'Sin teléfono'}</span>
+              </div>
+              <div className="drawer__dato">
+                <span className="drawer__dato-clave"><LuMapPin aria-hidden="true" /> Domicilio</span>
+                <span className="drawer__dato-valor">{capitalizar(cliente.domicilio ?? '') || 'Sin domicilio'}</span>
+              </div>
+            </div>
+
+            <div className="drawer__acciones-rapidas">
+              {cliente.telefono && (
+                <Boton talla="chico" icono={LuCopy} onClick={() => copiarTexto(cliente.telefono, avisar, 'Teléfono')}>
+                  Copiar teléfono
+                </Boton>
+              )}
+              {cliente.rfc && (
+                <Boton talla="chico" icono={LuCopy} onClick={() => copiarTexto(cliente.rfc, avisar, 'RFC')}>
+                  Copiar RFC
+                </Boton>
+              )}
+              {wa && (
+                <a className="boton boton--secundario boton--chico" href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer">
+                  <LuMessageCircle className="boton__icono" aria-hidden="true" />
+                  Enviar WhatsApp
+                </a>
+              )}
+            </div>
+          </div>
+
+          {cliente.publicoGeneral && (
+            <p className="texto-2" style={{ fontSize: '0.8125rem' }}>
+              Este registro concentra las ventas rápidas de mostrador sin cliente nominado y no se edita ni elimina.
+            </p>
+          )}
+        </>
+      )}
+    </Drawer>
+  );
+}
+
 export default function Clientes() {
   const { puede } = useSesion();
   const { avisar, confirmar } = useDialogos();
@@ -100,6 +196,8 @@ export default function Clientes() {
   const navegar = useNavegar();
   const [busqueda, setBusqueda] = useState('');
   const [tipo, setTipo] = useState('todos');
+  const [vista, setVista] = useVistaCatalogo('clientes');
+  const [detalle, setDetalle] = useState(null);
   const [editando, setEditando] = useState(null);
   const buscar = useRetardo(busqueda);
 
@@ -125,6 +223,7 @@ export default function Clientes() {
     try {
       await api.borrar(`/clientes/${cliente.id}`);
       avisar(`${nombrePropio(cliente.nombre)} eliminado`);
+      setDetalle(null);
       setEditando(null);
       recargar();
     } catch (err) {
@@ -133,6 +232,8 @@ export default function Clientes() {
   };
 
   const conteo = datos?.conteo;
+  const clientes = datos?.clientes ?? [];
+  const conWhatsApp = clientes.filter((c) => telefonoWhatsApp(c.telefono)).length;
 
   return (
     <div className="pagina">
@@ -142,31 +243,128 @@ export default function Clientes() {
         acciones={puedeEditar && <Boton variante="primario" icono={LuUserPlus} onClick={() => setEditando('nuevo')}>Nuevo cliente</Boton>}
       />
 
-      <div className="filtros">
-        <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar cliente" placeholder="Nombre, RFC, teléfono o domicilio" className="filtros__buscador" />
-        <Segmentado
+      {datos && (
+        <ResumenCatalogo
+          items={[
+            { icono: LuUsers, etiqueta: 'Cartera total', valor: numero(conteo?.total ?? clientes.length), detalle: 'registros activos', alClick: () => setTipo('todos') },
+            { icono: LuUser, etiqueta: 'Personas físicas', valor: numero(conteo?.fisica ?? 0), detalle: 'clientes individuales', alClick: () => setTipo('fisica') },
+            { icono: LuBuilding2, etiqueta: 'Personas morales', valor: numero(conteo?.moral ?? 0), detalle: 'negocios y empresas', alClick: () => setTipo('moral') },
+            { icono: LuMessageCircle, etiqueta: 'Listos p/ WhatsApp', valor: numero(conWhatsApp), detalle: 'en esta vista', tono: 'esmeralda' },
+          ]}
+        />
+      )}
+
+      <div className="catalogo-controles">
+        <div className="catalogo-barra">
+          <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar cliente" placeholder="Nombre, RFC, teléfono o domicilio" />
+          <SwitchVista vista={vista} alCambiar={setVista} />
+        </div>
+        <ChipsFiltro
           etiqueta="Tipo de persona"
           valor={tipo}
           alCambiar={setTipo}
           opciones={[
             { valor: 'todos', etiqueta: 'Todos', conteo: conteo?.total },
-            { valor: 'fisica', etiqueta: 'Personas físicas', conteo: conteo?.fisica },
-            { valor: 'moral', etiqueta: 'Personas morales', conteo: conteo?.moral },
+            { valor: 'fisica', etiqueta: 'Personas físicas', conteo: conteo?.fisica, icono: LuUser },
+            { valor: 'moral', etiqueta: 'Personas morales', conteo: conteo?.moral, icono: LuBuilding2 },
           ]}
         />
       </div>
 
       <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && <EsqueletoTabla />}
+      {cargando && !datos && (vista === 'tarjetas' ? <EsqueletoFichas /> : <EsqueletoTabla />)}
 
-      {datos && (
+      {datos && vista === 'tarjetas' && (
+        clientes.length ? (
+          <div className={`fichas-grid ${cargando ? 'recargando' : ''}`}>
+            {clientes.map((c) => {
+              const tono = c.publicoGeneral ? 'oro' : c.tipo === 'moral' ? 'cielo' : tonoDeTexto(c.nombre);
+              const wa = telefonoWhatsApp(c.telefono);
+              return (
+                <article
+                  key={c.id}
+                  className={`ficha ficha--${tono} ${detalle?.id === c.id ? 'ficha--activa' : ''}`}
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => setDetalle(c)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetalle(c); } }}
+                >
+                  <div className="ficha__cabecera">
+                    <Monograma
+                      texto={c.nombre}
+                      tono={tono}
+                      icono={c.publicoGeneral ? LuStore : c.tipo === 'moral' ? LuBuilding2 : undefined}
+                      forma={c.tipo === 'fisica' && !c.publicoGeneral ? 'circulo' : 'suave'}
+                    />
+                    <div className="ficha__titulos">
+                      <h3 className="ficha__nombre">{c.publicoGeneral ? 'Público en general' : nombrePropio(c.nombre)}</h3>
+                      <span className="ficha__sub">Cliente #{c.id}</span>
+                    </div>
+                    {c.publicoGeneral
+                      ? <Insignia tono="info" icono={false}>Mostrador</Insignia>
+                      : <Insignia tono="neutro" icono={false}>{c.tipo === 'fisica' ? 'Física' : 'Moral'}</Insignia>}
+                  </div>
+
+                  <div className="ficha__detalles">
+                    <div className="ficha__linea">
+                      <span className="ficha__linea-izq">
+                        <LuPhone aria-hidden="true" />
+                        <span className="numeros">{c.telefono ?? 'Sin teléfono'}</span>
+                      </span>
+                      {c.telefono && (
+                        <button
+                          type="button"
+                          className="ficha__copiar"
+                          onClick={(e) => { e.stopPropagation(); copiarTexto(c.telefono, avisar, 'Teléfono'); }}
+                          aria-label={`Copiar teléfono de ${nombrePropio(c.nombre)}`}
+                        >
+                          <LuCopy aria-hidden="true" /> Copiar
+                        </button>
+                      )}
+                    </div>
+                    <div className="ficha__linea">
+                      <span className="ficha__linea-izq">
+                        <LuMapPin aria-hidden="true" />
+                        <span>{capitalizar(c.domicilio ?? '') || 'Sin domicilio'}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="ficha__pie">
+                    <span className="codigo-mono texto-2">{c.rfc ?? 'Sin RFC'}</span>
+                    {wa ? (
+                      <a
+                        className="ficha__copiar"
+                        href={`https://wa.me/${wa}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <LuMessageCircle aria-hidden="true" /> WhatsApp
+                      </a>
+                    ) : (
+                      <span className="ficha__pie-fecha">{c.publicoGeneral ? 'Venta rápida' : 'Sin WhatsApp'}</span>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <Panel>
+            <Vacio icono={LuUsers} titulo="Ningún cliente coincide">Prueba con otra parte del nombre, el RFC o el teléfono.</Vacio>
+          </Panel>
+        )
+      )}
+
+      {datos && vista === 'tabla' && (
         <Panel>
           <Tabla
             etiqueta="Clientes"
             cargando={cargando}
             porPagina={25}
-            filas={datos.clientes}
-            alAbrir={puedeEditar ? (c) => !c.publicoGeneral && setEditando(c) : undefined}
+            filas={clientes}
+            alAbrir={(c) => setDetalle(c)}
             columnas={[
               {
                 clave: 'nombre', titulo: 'Nombre o razón social', ordenable: true,
@@ -196,6 +394,17 @@ export default function Clientes() {
           />
         </Panel>
       )}
+
+      <InspectorCliente
+        cliente={detalle}
+        avisar={avisar}
+        alCerrar={() => setDetalle(null)}
+        alEliminar={eliminar}
+        alEditar={(c) => {
+          setDetalle(null);
+          setEditando(c);
+        }}
+      />
 
       <FormularioCliente
         key={editando === null ? 'cerrado' : editando === 'nuevo' ? 'nuevo' : editando.id}

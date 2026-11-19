@@ -353,12 +353,12 @@ export function BarrasRanking({ datos, campoEtiqueta, campoValor, formatoValor =
 // Barra segmentada alta: distribución por categorías
 // ---------------------------------------------------------------------
 const SERIES = [
-  'linear-gradient(135deg, #e7c98f 0%, #c99e52 100%)',
-  'linear-gradient(135deg, #56d49f 0%, #2f9b6d 100%)',
-  'linear-gradient(135deg, #9ec0f4 0%, #6088c4 100%)',
+  'linear-gradient(135deg, #ebd09c 0%, #c4974b 100%)',
+  'linear-gradient(135deg, #5ec99a 0%, #2d8762 100%)',
+  'linear-gradient(135deg, #a6c3ee 0%, #6185be 100%)',
 ];
 
-const MUESTRAS = ['#d4af6a', '#56d49f', '#9ec0f4'];
+const MUESTRAS = ['#d4af6a', '#5ec99a', '#a6c3ee'];
 
 export function BarraSegmentada({ partes, formatoValor = moneda, etiqueta }) {
   const total = partes.reduce((s, p) => s + p.valor, 0);

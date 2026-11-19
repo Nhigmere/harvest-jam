@@ -1,8 +1,9 @@
 // Marco de la aplicación: menú lateral Obsidian Atelier, paleta ⌘K y área de trabajo.
 import { useCallback, useEffect, useState } from 'react';
 import {
-  LuApple, LuChartColumn, LuCompass, LuDatabase, LuIdCard, LuLayoutDashboard, LuLogOut, LuMenu, LuPackagePlus,
-  LuPanelLeftClose, LuPanelLeftOpen, LuReceiptText, LuScrollText, LuSearch, LuShoppingBasket, LuTruck, LuUsers, LuX,
+  LuApple, LuChartColumn, LuChevronDown, LuCompass, LuDatabase, LuIdCard, LuLayoutDashboard, LuLogOut, LuMenu,
+  LuPackagePlus, LuPanelLeftClose, LuPanelLeftOpen, LuReceiptText, LuScrollText, LuSearch, LuShoppingBasket,
+  LuTruck, LuUsers, LuX,
 } from 'react-icons/lu';
 import { useSesion } from '../auth.jsx';
 import { iniciales, nombrePropio } from '../formato.js';
@@ -66,6 +67,13 @@ export function Layout({ children, completa = false }) {
       return false;
     }
   });
+  const [gruposCerrados, setGruposCerrados] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('harvest-jam:menu-grupos') || '{}');
+    } catch {
+      return {};
+    }
+  });
 
   useSpotlight();
 
@@ -94,6 +102,22 @@ export function Layout({ children, completa = false }) {
       return siguiente;
     });
   }, []);
+
+  const alternarGrupo = useCallback((grupo) => {
+    setGruposCerrados((prev) => {
+      const siguiente = { ...prev, [grupo]: !prev[grupo] };
+      try {
+        localStorage.setItem('harvest-jam:menu-grupos', JSON.stringify(siguiente));
+      } catch {
+        // Ignorar si localStorage no está disponible
+      }
+      return siguiente;
+    });
+  }, []);
+
+  const rutaCoincide = (item) => (
+    item.exacto ? pathname === item.ruta : pathname === item.ruta || pathname.startsWith(`${item.ruta}/`)
+  );
 
   const nombre = nombrePropio(usuario.empleado?.nombre ?? usuario.usuario);
   const esMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform ?? '');
@@ -151,22 +175,37 @@ export function Layout({ children, completa = false }) {
           {MENU.map((seccion) => {
             const visibles = seccion.items.filter((i) => puede(i.permiso));
             if (!visibles.length) return null;
+            const cerrado = !menuCompacto && Boolean(gruposCerrados[seccion.grupo]);
+            const tieneActivo = visibles.some(rutaCoincide);
             return (
-              <div key={seccion.grupo} className="menu__grupo">
-                <p className="menu__grupo-titulo">{seccion.grupo}</p>
+              <div key={seccion.grupo} className={`menu__grupo ${cerrado ? 'menu__grupo--cerrado' : ''}`}>
+                <button
+                  type="button"
+                  className="menu__grupo-titulo"
+                  onClick={() => alternarGrupo(seccion.grupo)}
+                  aria-expanded={!cerrado}
+                >
+                  <span>{seccion.grupo}</span>
+                  <span className="menu__grupo-controles" aria-hidden="true">
+                    {cerrado && tieneActivo && <span className="menu__grupo-punto" />}
+                    <LuChevronDown className="menu__grupo-flecha" />
+                  </span>
+                </button>
                 <ul>
                   {visibles.map(({ ruta, etiqueta, icono: Icono, exacto, destacar }) => (
                     <li key={ruta}>
                       <NavLink
                         to={ruta}
                         exacto={exacto}
-                        className="menu__enlace"
+                        className={`menu__enlace ${destacar ? 'menu__enlace--destacado' : ''}`}
                         title={etiqueta}
                         aria-label={etiqueta}
                       >
                         <Icono aria-hidden="true" />
-                        <span>{etiqueta}</span>
-                        {destacar && !menuCompacto && <span className="menu__enlace-pulso" aria-hidden="true" />}
+                        <span className="menu__enlace-texto">{etiqueta}</span>
+                        {destacar && !menuCompacto && (
+                          <span className="menu__enlace-etiqueta" aria-hidden="true">POS</span>
+                        )}
                       </NavLink>
                     </li>
                   ))}
@@ -177,11 +216,14 @@ export function Layout({ children, completa = false }) {
         </nav>
 
         <div className="menu__usuario">
-          <span className="avatar" title={`${nombre} (${usuario.rolNombre})`} aria-hidden="true">
-            {iniciales(usuario.empleado?.nombre ?? usuario.usuario.replace('_', ' '))}
+          <span className="menu__avatar" title={`${nombre} (${usuario.rolNombre})`} aria-hidden="true">
+            <span className="avatar">
+              {iniciales(usuario.empleado?.nombre ?? usuario.usuario.replace('_', ' '))}
+            </span>
+            <span className="menu__avatar-estado" />
           </span>
           <span className="menu__usuario-texto">
-            <span className="menu__usuario-nombre">{nombre}</span>
+            <span className="menu__usuario-nombre" title={nombre}>{nombre}</span>
             <span className="menu__usuario-rol">{usuario.rolNombre}</span>
           </span>
           <button type="button" className="menu__salir" onClick={salir} aria-label="Cerrar sesión" title="Cerrar sesión">

@@ -1,19 +1,30 @@
-// Personal, turnos, salarios y supervisores.
+// Personal, turnos, salarios y supervisores: fichas editoriales, filtros por turno e inspector lateral.
 import { useState } from 'react';
-import { LuIdCard, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
+import {
+  LuIdCard, LuKeyRound, LuMoon, LuPencil, LuPlus, LuShieldCheck, LuSun, LuSunset, LuTrash2, LuUsers, LuWallet,
+} from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
+import {
+  ChipsFiltro, Drawer, EsqueletoFichas, Monograma, ResumenCatalogo, SwitchVista, useVistaCatalogo,
+} from '../componentes/Catalogo.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
 import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { useFormulario } from '../componentes/formulario.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import {
-  Boton, BotonIcono, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Panel, Segmentado, Vacio,
+  Boton, BotonIcono, Buscador, CabeceraPagina, Campo, Insignia, MensajeError, Panel, Vacio,
 } from '../componentes/ui.jsx';
-import { capitalizar, moneda, nombrePropio, numero } from '../formato.js';
+import { capitalizar, moneda, monedaRedonda, nombrePropio, numero, plural } from '../formato.js';
 import { useApi, useRetardo } from '../hooks.js';
 
 const VACIO = { nombre: '', turno: 'matutino', salario: '', usuario: '', supervisorId: '' };
+
+const TURNO_INFO = {
+  matutino: { tono: 'oro', icono: LuSun, etiqueta: 'Matutino' },
+  vespertino: { tono: 'terracota', icono: LuSunset, etiqueta: 'Vespertino' },
+  nocturno: { tono: 'cielo', icono: LuMoon, etiqueta: 'Nocturno' },
+};
 
 function FormularioEmpleado({ abierto, empleado, todos, alCerrar, alGuardar, alEliminar }) {
   const { puede, usuario } = useSesion();
@@ -91,11 +102,94 @@ function FormularioEmpleado({ abierto, empleado, todos, alCerrar, alGuardar, alE
   );
 }
 
+function InspectorEmpleado({ empleado, todos, alCerrar, alEditar, alEliminar, alSeleccionar }) {
+  const { puede, usuario } = useSesion();
+  const info = empleado ? (TURNO_INFO[empleado.turno] ?? TURNO_INFO.matutino) : TURNO_INFO.matutino;
+  const esYo = empleado && empleado.id === usuario.empleado?.id;
+  const equipo = empleado ? todos.filter((e) => e.supervisorId === empleado.id) : [];
+
+  return (
+    <Drawer
+      abierto={Boolean(empleado)}
+      alCerrar={alCerrar}
+      titulo={empleado ? nombrePropio(empleado.nombre) : 'Empleado'}
+      subtitulo={empleado ? `Empleado #${empleado.id}${esYo ? ' · Tu perfil' : ''}` : undefined}
+      insignia={empleado && <Insignia tono="info" icono={info.icono}>{info.etiqueta}</Insignia>}
+      monograma={empleado && <Monograma texto={empleado.nombre} tono={info.tono} forma="circulo" talla="grande" />}
+      pie={empleado && (
+        <>
+          {puede('ELIMINAR_EMPLEADOS') && !esYo && (
+            <Boton variante="peligro-suave" icono={LuTrash2} onClick={() => alEliminar(empleado)} className="modal__accion-izq">
+              Eliminar
+            </Boton>
+          )}
+          {puede('EDITAR_EMPLEADOS') && <Boton icono={LuPencil} onClick={() => alEditar(empleado)}>Editar</Boton>}
+          <Boton variante="primario" onClick={alCerrar}>Listo</Boton>
+        </>
+      )}
+    >
+      {empleado && (
+        <>
+          <div className="drawer__stats">
+            <div className="drawer__stat">
+              <span className="drawer__stat-etiqueta">Salario</span>
+              <span className="drawer__stat-valor drawer__stat-valor--oro">{moneda(empleado.salario)}</span>
+            </div>
+            <div className="drawer__stat">
+              <span className="drawer__stat-etiqueta">A su cargo</span>
+              <span className="drawer__stat-valor">{numero(equipo.length)}</span>
+            </div>
+          </div>
+
+          <div className="drawer__seccion">
+            <h3 className="drawer__seccion-titulo">Información laboral</h3>
+            <div className="drawer__datos">
+              <div className="drawer__dato">
+                <span className="drawer__dato-clave"><info.icono aria-hidden="true" /> Turno</span>
+                <span className="drawer__dato-valor">{info.etiqueta}</span>
+              </div>
+              <div className="drawer__dato">
+                <span className="drawer__dato-clave"><LuShieldCheck aria-hidden="true" /> Supervisor</span>
+                <span className="drawer__dato-valor">{empleado.supervisorNombre ? nombrePropio(empleado.supervisorNombre) : 'Sin supervisor'}</span>
+              </div>
+              <div className="drawer__dato">
+                <span className="drawer__dato-clave"><LuKeyRound aria-hidden="true" /> Acceso al sistema</span>
+                <span className="drawer__dato-valor codigo-mono">{empleado.usuario ? `@${empleado.usuario}` : 'Sin usuario'}</span>
+              </div>
+            </div>
+          </div>
+
+          {equipo.length > 0 && (
+            <div className="drawer__seccion">
+              <h3 className="drawer__seccion-titulo">Equipo a su cargo ({numero(equipo.length)})</h3>
+              <ul className="lista-opciones" style={{ marginTop: 0 }}>
+                {equipo.map((sub) => (
+                  <li key={sub.id}>
+                    <button type="button" className="lista-opciones__opcion" onClick={() => alSeleccionar(sub)}>
+                      <span>
+                        <span className="lista-opciones__titulo">{nombrePropio(sub.nombre)}</span>
+                        <span className="lista-opciones__detalle">{capitalizar(sub.turno)}</span>
+                      </span>
+                      <span className="texto-2 numeros">{moneda(sub.salario)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </Drawer>
+  );
+}
+
 export default function Empleados() {
   const { puede } = useSesion();
   const { avisar, confirmar } = useDialogos();
   const [busqueda, setBusqueda] = useState('');
   const [turno, setTurno] = useState('todos');
+  const [vista, setVista] = useVistaCatalogo('empleados');
+  const [detalle, setDetalle] = useState(null);
   const [editando, setEditando] = useState(null);
   const buscar = useRetardo(busqueda);
   const { datos, error, cargando, recargar } = useApi('/empleados', { buscar, turno: turno === 'todos' ? null : turno });
@@ -114,6 +208,7 @@ export default function Empleados() {
     try {
       await api.borrar(`/empleados/${empleado.id}`);
       avisar(`${nombrePropio(empleado.nombre)} eliminado`);
+      setDetalle(null);
       setEditando(null);
       recargar();
       todos.recargar();
@@ -122,42 +217,116 @@ export default function Empleados() {
     }
   };
 
-  const nomina = (datos?.empleados ?? []).reduce((s, e) => s + e.salario, 0);
+  const listaCompleta = todos.datos?.empleados ?? [];
+  const empleados = datos?.empleados ?? [];
+  const nomina = empleados.reduce((s, e) => s + e.salario, 0);
+  const conAcceso = empleados.filter((e) => Boolean(e.usuario)).length;
+  const contarTurno = (t) => listaCompleta.filter((e) => e.turno === t).length;
 
   return (
     <div className="pagina">
       <CabeceraPagina
         titulo="Empleados"
-        descripcion="Personal de la frutería, sus turnos y a quién reportan."
+        descripcion="Personal de la frutería, sus turnos, salarios y estructura de supervisión."
         acciones={puedeEditar && <Boton variante="primario" icono={LuPlus} onClick={() => setEditando('nuevo')}>Nuevo empleado</Boton>}
       />
 
-      <div className="filtros">
-        <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar empleado" placeholder="Nombre, turno o usuario" className="filtros__buscador" />
-        <Segmentado
+      {datos && (
+        <ResumenCatalogo
+          items={[
+            { icono: LuUsers, etiqueta: 'Personal', valor: numero(empleados.length), detalle: turno === 'todos' ? 'en nómina activa' : `turno ${turno}` },
+            { icono: LuWallet, etiqueta: 'Nómina visible', valor: monedaRedonda(nomina), detalle: plural(empleados.length, 'empleado', 'empleados') },
+            { icono: LuKeyRound, etiqueta: 'Con acceso', valor: numero(conAcceso), detalle: 'usuarios de sistema', tono: 'esmeralda' },
+            { icono: LuSun, etiqueta: 'Matutino', valor: numero(contarTurno('matutino')), detalle: `${numero(contarTurno('vespertino'))} vesp. · ${numero(contarTurno('nocturno'))} noct.`, alClick: () => setTurno(turno === 'matutino' ? 'todos' : 'matutino') },
+          ]}
+        />
+      )}
+
+      <div className="catalogo-controles">
+        <div className="catalogo-barra">
+          <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar empleado" placeholder="Nombre, turno o usuario" />
+          <SwitchVista vista={vista} alCambiar={setVista} />
+        </div>
+        <ChipsFiltro
           etiqueta="Turno"
           valor={turno}
           alCambiar={setTurno}
           opciones={[
-            { valor: 'todos', etiqueta: 'Todos' },
-            { valor: 'matutino', etiqueta: 'Matutino' },
-            { valor: 'vespertino', etiqueta: 'Vespertino' },
-            { valor: 'nocturno', etiqueta: 'Nocturno' },
+            { valor: 'todos', etiqueta: 'Todos', conteo: listaCompleta.length || undefined },
+            { valor: 'matutino', etiqueta: 'Matutino', icono: LuSun, conteo: listaCompleta.length ? contarTurno('matutino') : undefined },
+            { valor: 'vespertino', etiqueta: 'Vespertino', icono: LuSunset, conteo: listaCompleta.length ? contarTurno('vespertino') : undefined },
+            { valor: 'nocturno', etiqueta: 'Nocturno', icono: LuMoon, conteo: listaCompleta.length ? contarTurno('nocturno') : undefined },
           ]}
         />
       </div>
 
       <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && <EsqueletoTabla />}
+      {cargando && !datos && (vista === 'tarjetas' ? <EsqueletoFichas /> : <EsqueletoTabla />)}
 
-      {datos && (
+      {datos && vista === 'tarjetas' && (
+        empleados.length ? (
+          <div className={`fichas-grid ${cargando ? 'recargando' : ''}`}>
+            {empleados.map((e) => {
+              const info = TURNO_INFO[e.turno] ?? TURNO_INFO.matutino;
+              const IconoTurno = info.icono;
+              return (
+                <article
+                  key={e.id}
+                  className={`ficha ficha--${info.tono} ${detalle?.id === e.id ? 'ficha--activa' : ''}`}
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => setDetalle(e)}
+                  onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setDetalle(e); } }}
+                >
+                  <div className="ficha__cabecera">
+                    <Monograma texto={e.nombre} tono={info.tono} forma="circulo" />
+                    <div className="ficha__titulos">
+                      <h3 className="ficha__nombre">{nombrePropio(e.nombre)}</h3>
+                      <span className="ficha__sub">
+                        {e.usuario ? <span className="codigo-mono">@{e.usuario}</span> : `Empleado #${e.id}`}
+                      </span>
+                    </div>
+                    <Insignia tono="neutro" icono={IconoTurno}>{info.etiqueta}</Insignia>
+                  </div>
+
+                  <div className="ficha__detalles">
+                    <div className="ficha__linea">
+                      <span className="ficha__linea-izq">
+                        <LuShieldCheck aria-hidden="true" />
+                        <span>{e.supervisorNombre ? `Reporta a ${nombrePropio(e.supervisorNombre)}` : 'Sin supervisor asignado'}</span>
+                      </span>
+                    </div>
+                    <div className="ficha__linea">
+                      <span className="ficha__linea-izq">
+                        <LuKeyRound aria-hidden="true" />
+                        <span>{e.usuario ? 'Acceso habilitado al sistema' : 'Sin usuario de sistema'}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="ficha__pie">
+                    <span className="texto-3">Salario</span>
+                    <span className="ficha__pie-monto">{moneda(e.salario)}</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <Panel>
+            <Vacio icono={LuIdCard} titulo="Ningún empleado coincide">Prueba con otro nombre o turno.</Vacio>
+          </Panel>
+        )
+      )}
+
+      {datos && vista === 'tabla' && (
         <Panel>
           <Tabla
             etiqueta="Empleados"
             cargando={cargando}
             porPagina={25}
-            filas={datos.empleados}
-            alAbrir={puedeEditar ? (e) => setEditando(e) : undefined}
+            filas={empleados}
+            alAbrir={(e) => setDetalle(e)}
             columnas={[
               {
                 clave: 'nombre', titulo: 'Nombre', ordenable: true,
@@ -179,16 +348,28 @@ export default function Empleados() {
             vacio={<Vacio icono={LuIdCard} titulo="Ningún empleado coincide">Prueba con otro nombre o turno.</Vacio>}
           />
           <p className="panel__pie texto-2">
-            Suma de salarios de {datos.empleados.length === 1 ? 'este empleado' : `estos ${numero(datos.empleados.length)} empleados`}: {moneda(nomina)}
+            Suma de salarios de {empleados.length === 1 ? 'este empleado' : `estos ${numero(empleados.length)} empleados`}: {moneda(nomina)}
           </p>
         </Panel>
       )}
+
+      <InspectorEmpleado
+        empleado={detalle}
+        todos={listaCompleta}
+        alCerrar={() => setDetalle(null)}
+        alSeleccionar={(sub) => setDetalle(sub)}
+        alEliminar={eliminar}
+        alEditar={(e) => {
+          setDetalle(null);
+          setEditando(e);
+        }}
+      />
 
       <FormularioEmpleado
         key={editando === null ? 'cerrado' : editando === 'nuevo' ? 'nuevo' : editando.id}
         abierto={editando !== null}
         empleado={editando === 'nuevo' ? null : editando}
-        todos={todos.datos?.empleados ?? []}
+        todos={listaCompleta}
         alCerrar={() => setEditando(null)}
         alEliminar={eliminar}
         alGuardar={(e, eraEdicion) => {

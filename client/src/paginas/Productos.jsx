@@ -1,16 +1,23 @@
-// Catálogo de productos e inventario.
+// Catálogo de productos e inventario: fichas editoriales con precios, barra de stock e inspector lateral.
 import { useEffect, useMemo, useState } from 'react';
-import { LuApple, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
+import {
+  LuApple, LuCircleCheck, LuPackage, LuPencil, LuPlus, LuSprout, LuTag, LuTrash2, LuTriangleAlert, LuTruck, LuWallet,
+} from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
+import {
+  ChipsFiltro, Drawer, EsqueletoFichas, Monograma, ResumenCatalogo, SwitchVista, tonoDeTexto, useVistaCatalogo,
+} from '../componentes/Catalogo.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
 import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { useFormulario } from '../componentes/formulario.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import {
-  Boton, BotonIcono, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Panel, Segmentado, Vacio,
+  Boton, BotonIcono, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Panel, Vacio,
 } from '../componentes/ui.jsx';
-import { capitalizar, cantidad, esFraccionable, moneda, nombrePropio, numero, porcentaje } from '../formato.js';
+import {
+  abreviaturaUnidad, capitalizar, cantidad, esFraccionable, moneda, monedaRedonda, nombrePropio, numero, porcentaje,
+} from '../formato.js';
 import { useApi } from '../hooks.js';
 
 const VACIO = { descripcion: '', categoria: 'fruta', unidadMedida: 'kilogramo', precioCompra: '', precioVenta: '', existencia: '0', proveedores: [] };
@@ -30,10 +37,22 @@ function InsigniaStock({ producto, umbral }) {
 
 const margen = (p) => (p.precioVenta > 0 ? ((p.precioVenta - p.precioCompra) / p.precioVenta) * 100 : 0);
 
+function iconoCategoria(categoria) {
+  const c = (categoria || '').toLowerCase();
+  if (c.includes('fruta')) return LuApple;
+  if (c.includes('verdura') || c.includes('hortaliza')) return LuSprout;
+  return LuPackage;
+}
+
+function tonoCategoria(categoria) {
+  const c = (categoria || '').toLowerCase();
+  if (c.includes('fruta')) return 'oro';
+  if (c.includes('verdura') || c.includes('hortaliza')) return 'esmeralda';
+  return tonoDeTexto(c);
+}
+
 function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar, alGuardar, alEliminar }) {
   const { puede } = useSesion();
-  // El componente se vuelve a montar cada vez que se abre (ver "key" abajo),
-  // así el formulario empieza con los datos del producto elegido.
   const f = useFormulario(producto
     ? { ...VACIO, ...producto, precioCompra: String(producto.precioCompra), precioVenta: String(producto.precioVenta), existencia: String(producto.existencia), proveedores: [] }
     : VACIO);
@@ -41,7 +60,6 @@ function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar,
   const [filtroProv, setFiltroProv] = useState('');
   const { fijar } = f;
 
-  // Proveedores que ya surten el producto.
   useEffect(() => {
     if (!producto || !puede('VER_PROVEEDORES')) return;
     api.get(`/productos/${producto.codigo}`)
@@ -160,6 +178,107 @@ function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar,
   );
 }
 
+function InspectorProducto({ producto, umbral, alCerrar, alEditar, alEliminar }) {
+  const { puede } = useSesion();
+  const detalleApi = useApi(
+    producto && puede('VER_PROVEEDORES') ? `/productos/${producto.codigo}` : null,
+  );
+  const estado = producto ? estadoDe(producto, umbral) : 'disponible';
+  const tono = producto ? tonoCategoria(producto.categoria) : 'oro';
+  const pctStock = producto ? Math.min((producto.existencia / Math.max(umbral * 3, 1)) * 100, 100) : 0;
+
+  return (
+    <Drawer
+      abierto={Boolean(producto)}
+      alCerrar={alCerrar}
+      titulo={producto ? capitalizar(producto.descripcion) : 'Producto'}
+      subtitulo={producto ? `Código #${producto.codigo} · ${capitalizar(producto.categoria)} · por ${producto.unidadMedida}` : undefined}
+      insignia={producto && <InsigniaStock producto={producto} umbral={umbral} />}
+      monograma={producto && <Monograma texto={producto.descripcion} tono={tono} icono={iconoCategoria(producto.categoria)} talla="grande" />}
+      pie={producto && (
+        <>
+          {puede('ELIMINAR_PRODUCTOS') && (
+            <Boton variante="peligro-suave" icono={LuTrash2} onClick={() => alEliminar(producto)} className="modal__accion-izq">
+              Eliminar
+            </Boton>
+          )}
+          {puede('EDITAR_PRODUCTOS') && <Boton icono={LuPencil} onClick={() => alEditar(producto)}>Editar</Boton>}
+          <Boton variante="primario" onClick={alCerrar}>Listo</Boton>
+        </>
+      )}
+    >
+      {producto && (
+        <>
+          <div className="drawer__stats">
+            <div className="drawer__stat">
+              <span className="drawer__stat-etiqueta">Precio venta</span>
+              <span className="drawer__stat-valor drawer__stat-valor--oro">{moneda(producto.precioVenta)}</span>
+            </div>
+            <div className="drawer__stat">
+              <span className="drawer__stat-etiqueta">Costo</span>
+              <span className="drawer__stat-valor">{moneda(producto.precioCompra)}</span>
+            </div>
+            <div className="drawer__stat">
+              <span className="drawer__stat-etiqueta">Margen</span>
+              <span className="drawer__stat-valor">{porcentaje(margen(producto), 0)}</span>
+            </div>
+          </div>
+
+          <div className="drawer__seccion">
+            <h3 className="drawer__seccion-titulo">Nivel de inventario</h3>
+            <div className="drawer__datos">
+              <div className="drawer__dato" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+                <div className="ficha__stock-fila">
+                  <span>Existencia actual</span>
+                  <strong className="numeros" style={{ color: 'var(--text-primary)' }}>{cantidad(producto.existencia, producto.unidadMedida)}</strong>
+                </div>
+                <span className="ficha__stock-pista">
+                  <span
+                    className={`ficha__stock-barra ${estado === 'bajo' ? 'ficha__stock-barra--bajo' : estado === 'agotado' ? 'ficha__stock-barra--agotado' : ''}`}
+                    style={{ width: `${estado === 'agotado' ? 6 : Math.max(pctStock, 10)}%` }}
+                  />
+                </span>
+                <div className="ficha__stock-fila texto-3">
+                  <span>Umbral de alerta: {numero(umbral)}</span>
+                  <span className="numeros">Valor a costo: {moneda(producto.existencia * producto.precioCompra)}</span>
+                </div>
+              </div>
+              <div className="drawer__dato">
+                <span className="drawer__dato-clave"><LuTag aria-hidden="true" /> Utilidad por {abreviaturaUnidad(producto.unidadMedida, 1)}</span>
+                <span className="drawer__dato-valor numeros">{moneda(producto.precioVenta - producto.precioCompra)}</span>
+              </div>
+            </div>
+          </div>
+
+          {puede('VER_PROVEEDORES') && (
+            <div className="drawer__seccion">
+              <h3 className="drawer__seccion-titulo">Proveedores que lo surten</h3>
+              {detalleApi.cargando && <Cargando texto="Cargando proveedores…" />}
+              {!detalleApi.cargando && detalleApi.datos?.proveedores?.length ? (
+                <ul className="lista-simple">
+                  {detalleApi.datos.proveedores.map((prov) => (
+                    <li key={prov.id}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <LuTruck size={14} style={{ color: 'var(--accent)' }} aria-hidden="true" />
+                        {nombrePropio(prov.nombre)}
+                      </span>
+                      <span className="texto-2">{capitalizar(prov.ciudad)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : !detalleApi.cargando && (
+                <p className="texto-2" style={{ fontSize: '0.8125rem' }}>
+                  Sin proveedores ligados todavía. Puedes asignarlos al editar el producto.
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </Drawer>
+  );
+}
+
 export default function Productos() {
   const { puede } = useSesion();
   const { avisar, confirmar } = useDialogos();
@@ -167,7 +286,9 @@ export default function Productos() {
   const [busqueda, setBusqueda] = useState('');
   const [categoria, setCategoria] = useState('todas');
   const [estado, setEstado] = useState('todos');
-  const [editando, setEditando] = useState(null); // null | 'nuevo' | producto
+  const [vista, setVista] = useVistaCatalogo('productos');
+  const [detalle, setDetalle] = useState(null);
+  const [editando, setEditando] = useState(null);
 
   const productos = datos?.productos ?? [];
   const umbral = datos?.umbralStockBajo ?? 10;
@@ -193,6 +314,7 @@ export default function Productos() {
     try {
       await api.borrar(`/productos/${producto.codigo}`);
       avisar(`${capitalizar(producto.descripcion)} eliminado`);
+      setDetalle(null);
       setEditando(null);
       recargar();
     } catch (err) {
@@ -201,6 +323,9 @@ export default function Productos() {
   };
 
   const valorInventario = productos.reduce((s, p) => s + p.existencia * p.precioCompra, 0);
+  const totalDisponibles = productos.filter((p) => estadoDe(p, umbral) === 'disponible').length;
+  const totalBajos = productos.filter((p) => estadoDe(p, umbral) === 'bajo').length;
+  const totalAgotados = productos.filter((p) => estadoDe(p, umbral) === 'agotado').length;
 
   return (
     <div className="pagina">
@@ -210,38 +335,128 @@ export default function Productos() {
         acciones={puedeEditar && <Boton variante="primario" icono={LuPlus} onClick={() => setEditando('nuevo')}>Nuevo producto</Boton>}
       />
 
-      <div className="filtros">
-        <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar producto" placeholder="Nombre o código" className="filtros__buscador" />
-        <Segmentado
-          etiqueta="Categoría"
-          valor={categoria}
-          alCambiar={setCategoria}
-          opciones={[{ valor: 'todas', etiqueta: 'Todas' }, ...categorias.map((c) => ({ valor: c, etiqueta: capitalizar(c) }))]}
-        />
-        <Segmentado
-          etiqueta="Existencia"
-          valor={estado}
-          alCambiar={setEstado}
-          opciones={[
-            { valor: 'todos', etiqueta: 'Todos', conteo: conteo('todos') },
-            { valor: 'disponible', etiqueta: 'Disponibles', conteo: conteo('disponible') },
-            { valor: 'bajo', etiqueta: 'Por acabarse', conteo: conteo('bajo') },
-            { valor: 'agotado', etiqueta: 'Agotados', conteo: conteo('agotado') },
+      {datos && (
+        <ResumenCatalogo
+          items={[
+            { icono: LuPackage, etiqueta: 'Catálogo', valor: numero(productos.length), detalle: `${numero(categorias.length)} categorías`, alClick: () => { setCategoria('todas'); setEstado('todos'); } },
+            { icono: LuWallet, etiqueta: 'Valor a costo', valor: monedaRedonda(valorInventario), detalle: 'existencia actual' },
+            { icono: LuCircleCheck, etiqueta: 'Disponibles', valor: numero(totalDisponibles), detalle: 'stock saludable', tono: 'esmeralda', alClick: () => setEstado(estado === 'disponible' ? 'todos' : 'disponible') },
+            {
+              icono: LuTriangleAlert,
+              etiqueta: totalAgotados > 0 ? 'Alertas stock' : 'Por acabarse',
+              valor: numero(totalBajos + totalAgotados),
+              detalle: totalAgotados > 0 ? `${numero(totalAgotados)} agotados · ${numero(totalBajos)} bajos` : `umbral ≤ ${numero(umbral)}`,
+              tono: totalAgotados > 0 ? 'critico' : 'aviso',
+              alClick: () => setEstado(totalAgotados > 0 ? (estado === 'agotado' ? 'bajo' : 'agotado') : (estado === 'bajo' ? 'todos' : 'bajo')),
+            },
           ]}
         />
+      )}
+
+      <div className="catalogo-controles">
+        <div className="catalogo-barra">
+          <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar producto" placeholder="Nombre o código" />
+          <SwitchVista vista={vista} alCambiar={setVista} />
+        </div>
+        <div className="filtros">
+          <ChipsFiltro
+            etiqueta="Categoría"
+            valor={categoria}
+            alCambiar={setCategoria}
+            opciones={[
+              { valor: 'todas', etiqueta: 'Todas', conteo: productos.length },
+              ...categorias.map((c) => ({
+                valor: c,
+                etiqueta: capitalizar(c),
+                icono: iconoCategoria(c),
+                conteo: productos.filter((p) => p.categoria === c).length,
+              })),
+            ]}
+          />
+          <ChipsFiltro
+            etiqueta="Existencia"
+            valor={estado}
+            alCambiar={setEstado}
+            opciones={[
+              { valor: 'todos', etiqueta: 'Todos', conteo: conteo('todos') },
+              { valor: 'disponible', etiqueta: 'Disponibles', conteo: conteo('disponible') },
+              { valor: 'bajo', etiqueta: 'Por acabarse', conteo: conteo('bajo') },
+              { valor: 'agotado', etiqueta: 'Agotados', conteo: conteo('agotado') },
+            ]}
+          />
+        </div>
       </div>
 
       <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && <EsqueletoTabla />}
+      {cargando && !datos && (vista === 'tarjetas' ? <EsqueletoFichas /> : <EsqueletoTabla />)}
 
-      {datos && (
+      {datos && vista === 'tarjetas' && (
+        visibles.length ? (
+          <div className={`fichas-grid ${cargando ? 'recargando' : ''}`}>
+            {visibles.map((p) => {
+              const est = estadoDe(p, umbral);
+              const tono = tonoCategoria(p.categoria);
+              const pctStock = Math.min((p.existencia / Math.max(umbral * 3, 1)) * 100, 100);
+              return (
+                <article
+                  key={p.codigo}
+                  className={`ficha ficha--${tono} ${detalle?.codigo === p.codigo ? 'ficha--activa' : ''}`}
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => setDetalle(p)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetalle(p); } }}
+                >
+                  <div className="ficha__cabecera">
+                    <Monograma texto={p.descripcion} tono={tono} icono={iconoCategoria(p.categoria)} />
+                    <div className="ficha__titulos">
+                      <h3 className="ficha__nombre">{capitalizar(p.descripcion)}</h3>
+                      <span className="ficha__sub">#{p.codigo} · {capitalizar(p.categoria)}</span>
+                    </div>
+                    <InsigniaStock producto={p} umbral={umbral} />
+                  </div>
+
+                  <div className="ficha__precios">
+                    <span className="ficha__precio-venta">
+                      {moneda(p.precioVenta)}
+                      <span className="ficha__precio-unidad">/ {abreviaturaUnidad(p.unidadMedida, 1)}</span>
+                    </span>
+                    <span className="ficha__precio-meta">
+                      <span className="numeros">Costo {moneda(p.precioCompra)}</span>
+                      <span className="ficha__margen">{porcentaje(margen(p), 0)}</span>
+                    </span>
+                  </div>
+
+                  <div className="ficha__pie" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                    <div className="ficha__stock-fila">
+                      <span>Existencia</span>
+                      <strong className="numeros" style={{ color: 'var(--text-primary)' }}>{cantidad(p.existencia, p.unidadMedida)}</strong>
+                    </div>
+                    <span className="ficha__stock-pista">
+                      <span
+                        className={`ficha__stock-barra ${est === 'bajo' ? 'ficha__stock-barra--bajo' : est === 'agotado' ? 'ficha__stock-barra--agotado' : ''}`}
+                        style={{ width: `${est === 'agotado' ? 5 : Math.max(pctStock, 8)}%` }}
+                      />
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <Panel>
+            <Vacio icono={LuApple} titulo="No hay productos con estos filtros">Cambia la búsqueda o los filtros de arriba.</Vacio>
+          </Panel>
+        )
+      )}
+
+      {datos && vista === 'tabla' && (
         <Panel>
           <Tabla
             etiqueta="Productos"
             clave="codigo"
             cargando={cargando}
             filas={visibles}
-            alAbrir={puedeEditar ? (p) => setEditando(p) : undefined}
+            alAbrir={(p) => setDetalle(p)}
             ordenInicial={{ clave: 'descripcion', asc: true }}
             porPagina={50}
             columnas={[
@@ -274,6 +489,17 @@ export default function Productos() {
           />
         </Panel>
       )}
+
+      <InspectorProducto
+        producto={detalle}
+        umbral={umbral}
+        alCerrar={() => setDetalle(null)}
+        alEliminar={eliminar}
+        alEditar={(p) => {
+          setDetalle(null);
+          setEditando(p);
+        }}
+      />
 
       <FormularioProducto
         key={editando === null ? 'cerrado' : editando === 'nuevo' ? 'nuevo' : editando.codigo}

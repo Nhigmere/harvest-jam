@@ -55,12 +55,13 @@
   --ambient-emerald: rgba(52, 179, 126, 0.045);
 
   /* Superficies cristalinas oscuras */
-  --glass-bg: rgba(25, 23, 19, 0.72);
-  --glass-bg-hover: rgba(34, 31, 26, 0.86);
+  --glass-bg: rgba(24, 22, 18, 0.78);
+  --panel-bg: linear-gradient(180deg, rgba(28, 25, 21, 0.86) 0%, rgba(16, 15, 12, 0.94) 100%);
+  --glass-bg-hover: rgba(34, 31, 26, 0.9);
   --glass-bg-subtle: rgba(255, 248, 235, 0.03);
-  --glass-border: rgba(235, 222, 196, 0.09);
-  --glass-border-strong: rgba(235, 222, 196, 0.17);
-  --glass-highlight: rgba(255, 246, 228, 0.11);
+  --glass-border: rgba(235, 222, 196, 0.095);
+  --glass-border-strong: rgba(235, 222, 196, 0.19);
+  --glass-highlight: rgba(255, 246, 224, 0.1);
   --glass-blur: 22px;
 
   /* Sidebar arquitectónico */
@@ -156,9 +157,10 @@ body {
   color: var(--text-primary);
   caret-color: var(--accent);
   background:
-    radial-gradient(58% 46% at 14% 0%, var(--ambient-gold), transparent 72%),
-    radial-gradient(48% 48% at 96% 96%, var(--ambient-emerald), transparent 70%),
-    linear-gradient(180deg, var(--bg-base) 0%, var(--bg-void) 100%);
+    radial-gradient(62% 48% at 16% -4%, rgba(212, 175, 106, 0.1), transparent 70%),
+    radial-gradient(46% 42% at 94% 98%, rgba(52, 179, 126, 0.055), transparent 68%),
+    radial-gradient(90% 80% at 50% 45%, rgba(24, 21, 16, 0.35), transparent 80%),
+    linear-gradient(180deg, #0b0a08 0%, var(--bg-void) 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -238,10 +240,10 @@ p {
 
 h1 {
   font-family: var(--font-display);
-  font-size: 2rem;
+  font-size: clamp(1.9rem, 2.6vw, 2.35rem);
   font-weight: 500;
-  line-height: 1.12;
-  letter-spacing: -0.015em;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
   text-wrap: balance;
 }
