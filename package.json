@@ -15,6 +15,10 @@
     "dev": "node scripts/dev.js",
     "build": "npm run build --workspace client",
     "start": "npm run start --workspace server",
-    "db:setup": "npm run db:setup --workspace server --"
+    "db:setup": "npm run db:setup --workspace server --",
+    "dss:init": "node server/scripts/init-dss.js",
+    "etl": "node server/src/etl/cli.js",
+    "etl:prueba": "node server/src/etl/cli.js --prueba",
+    "test": "node --test server/test/*.test.js"
   }
 }

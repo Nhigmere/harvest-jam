@@ -66,6 +66,7 @@ async function main() {
     '04_roles.sql',
     '05_datos.sql',
     ...(conSimulados ? ['06_datos_simulados.sql'] : []),
+    '07_dss.sql',
   ];
   for (const archivo of archivos) await ejecutarArchivo(cliente, archivo);
   await cliente.end();

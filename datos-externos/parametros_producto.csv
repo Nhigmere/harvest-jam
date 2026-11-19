@@ -1,0 +1,59 @@
+codigo,descripcion,categoria,unidad_medida,stock_minimo,vida_util_dias,fecha_actualizacion
+" 5000",  manzana   ROJA ,FRUTAS ,kg,"12,5",18,2026-11-01
+05001,manzana verde,fruta,kilogramo,10,18,01/11/2026
+5002,manzana amarilla,fruta,kilogramo,10,16,2026-11-01
+5003,pera roja,fruta,kilogramo,8,10,2026-11-01
+5004,pera de anjou,fruta,kilogramo,8,10,2026-11-01
+5005,papaya,fruta,kilogramo,15,6,2026-11-01
+5006,melón,fruta,pza,12,8,2026-11-01
+5007,naranja,fruta,kilogramo,25,14,2026-11-01
+5008,plátano tabasco,fruta,kilogramo,20,5,2026-11-01
+5009,platano macho,fruta,kilogramo,18,7,2026-11-01
+5010,piña,fruta,pieza,10,9,2026-11-01
+5011,calabacita italiana,verdura,kilogramo,12,6,2026-11-01
+5012,chile serrano,verdura,kilogramo,8,9,2026-11-01
+5013,chile jalapeño,verdura,kilogramo,8,9,2026-11-01
+5014,papa,verdura,kilogramo,20,25,2026-11-01
+5015,espinaca,verdura,ramito,10,4,2026-11-01
+5016,lechuga romanita,verdura,pieza,12,5,2026-11-01
+5017,ejote,verdura,kilogramo,8,5,2026-11-01
+5018,jicama,fruta,kilogramo,14,14,2026-11-01
+5019,sandia,fruta,kilogramo,15,10,2026-11-01
+5020,chile poblano,verdura,kilogramo,8,8,2026-11-01
+5022,limon,fruta,kilogramo,18,14,2026-11-01
+5023,cebolla,verdura,kilogramo,15,21,2026-10-20
+5023,  cebolla  ,VERDURAS,kg,"18,0",21,2026-11-05
+5024,tomate rojo,verdura,kilogramo,25,6,2026-11-01
+5025,uva globo,fruta,kilogramo,12,7,2026-11-01
+5026,uva verde,fruta,kilogramo,12,7,2026-11-01
+5027,fresa,fruta,kilogramo,14,4,2026-11-01
+5027,fresa invalida,fruta,kilogramo,14,0,2026-11-02
+5028,zarzamora,fruta,charola,10,4,2026-11-01
+5029,frambuesa,fruta,charola,10,4,2026-11-01
+5030,arandano,fruta,charola,12,6,2026-11-01
+5031,mango ataulfo,fruta,kilogramo,20,6,2026-11-01
+5032,mango paraiso,fruta,kilogramo,18,6,2026-11-01
+5033,guayaba,fruta,kilogramo,16,5,2026-11-01
+5034,tejocote,fruta,kilogramo,12,12,2026-11-01
+5035,caña,fruta,pieza,20,14,2026-11-01
+5036,mamey,fruta,pieza,10,6,2026-11-01
+5037,zapote negro,fruta,kilogramo,8,6,2026-11-01
+5038,chicozapote,fruta,kilogramo,10,6,2026-11-01
+5039,guanabana,fruta,pieza,6,5,2026-11-01
+5040,maracuya,fruta,kilogramo,10,9,2026-11-01
+5041,carambola,fruta,kilogramo,8,8,2026-11-01
+5042,nopales,verdura,kilogramo,22,5,2026-11-01
+5043,chayote sin espina,verdura,kilogramo,16,12,2026-11-01
+5044,chayote con espina,verdura,kilogramo,14,12,2026-11-01
+5045,brocoli,verdura,kilogramo,14,5,2026-11-01
+5046,coliflor,verdura,pieza,12,6,2026-11-01
+5047,betabel,verdura,kilogramo,12,15,2026-11-01
+5048,zanahoria,verdura,kilogramo,20,18,2026-11-01
+5049,apio,verdura,manojo,14,7,2026-11-01
+5050,cilantro,verdura,manojo,25,3,2026-11-01
+5051,perejil,verdura,manojo,20,4,2026-11-01
+5052,epazote,verdura,manojo,14,4,2026-11-01
+5053,hierbabuena,verdura,manojo,12,4,2026-11-01
+5054,acelga,verdura,manojo,14,4,2026-11-01
+9999,producto fantasma,fruta,kilogramo,10,7,2026-11-01
+5005,papaya negativa,fruta,kilogramo,-5,6,2026-11-01

@@ -1,7 +1,7 @@
 // Marco de la aplicación: menú lateral Obsidian Atelier, paleta ⌘K y área de trabajo.
 import { useCallback, useEffect, useState } from 'react';
 import {
-  LuApple, LuChartColumn, LuIdCard, LuLayoutDashboard, LuLogOut, LuMenu, LuPackagePlus,
+  LuApple, LuChartColumn, LuCompass, LuDatabase, LuIdCard, LuLayoutDashboard, LuLogOut, LuMenu, LuPackagePlus,
   LuPanelLeftClose, LuPanelLeftOpen, LuReceiptText, LuScrollText, LuSearch, LuShoppingBasket, LuTruck, LuUsers, LuX,
 } from 'react-icons/lu';
 import { useSesion } from '../auth.jsx';
@@ -32,7 +32,9 @@ export const MENU = [
   {
     grupo: 'Análisis',
     items: [
+      { ruta: '/decisiones', etiqueta: 'Decisiones', icono: LuCompass, permiso: 'VER_DSS' },
       { ruta: '/reportes', etiqueta: 'Reportes', icono: LuChartColumn, permiso: 'VER_REPORTES' },
+      { ruta: '/etl', etiqueta: 'Bitácora ETL', icono: LuDatabase, permiso: 'VER_ETL' },
       { ruta: '/auditoria', etiqueta: 'Auditoría', icono: LuScrollText, permiso: 'VER_AUDITORIA' },
     ],
   },

@@ -9,7 +9,9 @@ import authRouter from './rutas/auth.js';
 import auditoriaRouter from './rutas/auditoria.js';
 import clientesRouter from './rutas/clientes.js';
 import comprasRouter from './rutas/compras.js';
+import dssRouter from './rutas/dss.js';
 import empleadosRouter from './rutas/empleados.js';
+import etlRouter from './rutas/etl.js';
 import productosRouter from './rutas/productos.js';
 import proveedoresRouter from './rutas/proveedores.js';
 import { dashboardRouter, reportesRouter } from './rutas/reportes.js';
@@ -37,6 +39,8 @@ export function crearApp() {
   api.use('/compras', comprasRouter);
   api.use('/reportes', reportesRouter);
   api.use('/auditoria', auditoriaRouter);
+  api.use('/etl', etlRouter);
+  api.use('/dss', dssRouter);
   api.use((req, res, next) => next(new HttpError(404, 'Ruta de la API no encontrada.')));
 
   app.use('/api', api);

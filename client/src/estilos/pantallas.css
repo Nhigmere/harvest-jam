@@ -1577,6 +1577,314 @@ div.lista-movimientos__fila:hover {
   color: var(--accent-bright);
 }
 
+/* =====================================================================
+   Bitácora ETL (/etl) y Módulo de Decisiones DSS (/decisiones)
+   ===================================================================== */
+.etl-regla-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 2px 8px;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-bright);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.etl-diff-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+
+.etl-diff-antes {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(242, 121, 142, 0.55);
+}
+
+.etl-diff-sep {
+  color: var(--accent);
+}
+
+.etl-diff-despues {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.etl-diff-rechazo {
+  color: var(--danger-text);
+  font-weight: 600;
+}
+
+.etl-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.etl-diff-caja {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: rgba(12, 11, 9, 0.65);
+}
+
+.etl-diff-etiqueta {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.etl-diff-valor {
+  margin-top: 4px;
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.etl-diff-valor--despues {
+  color: var(--accent-bright);
+  font-weight: 600;
+}
+
+.etl-diff-flecha {
+  color: var(--accent);
+  font-size: 1.25rem;
+}
+
+.etl-motivo {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.etl-json-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.etl-json {
+  margin: 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: rgba(8, 8, 7, 0.85);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 220px;
+}
+
+/* --- DSS Decisiones --- */
+.dss-aviso-honestidad {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: 12px var(--sp-4);
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  background: rgba(212, 175, 106, 0.08);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+}
+
+.dss-aviso-honestidad svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  color: var(--accent-bright);
+  flex: none;
+}
+
+.dss-aviso-honestidad strong {
+  color: var(--text-primary);
+}
+
+.dss-escenarios {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.dss-escenario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: rgba(12, 11, 9, 0.65);
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease-snappy), background-color var(--dur-fast) var(--ease-snappy), box-shadow var(--dur-med) var(--ease-luxury);
+}
+
+.dss-escenario:hover {
+  border-color: var(--glass-border-strong);
+  background: rgba(24, 22, 18, 0.88);
+}
+
+.dss-escenario--activo {
+  border-color: var(--accent);
+  background: linear-gradient(155deg, rgba(212, 175, 106, 0.16) 0%, rgba(18, 17, 14, 0.92) 100%);
+  box-shadow: 0 12px 26px -10px rgba(212, 175, 106, 0.25), inset 0 1px 0 rgba(255, 244, 214, 0.2);
+}
+
+.dss-escenario__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.dss-escenario__titulo {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dss-escenario__desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.dss-escenario__metricas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin-top: auto;
+  padding-top: var(--sp-2);
+  border-top: 1px solid rgba(235, 222, 196, 0.08);
+}
+
+.dss-escenario__etq {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.dss-escenario__metricas strong {
+  font-size: 0.9375rem;
+  color: var(--accent-bright);
+}
+
+.dss-parametros {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--glass-border);
+}
+
+.dss-parametros__titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.dss-parametros__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-4);
+  align-items: start;
+}
+
+.dss-parametros__grid input[type='range'] {
+  width: 100%;
+  margin-top: 10px;
+  accent-color: var(--accent);
+}
+
+.dss-porque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.dss-porque__resumen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.dss-porque__puntaje {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.dss-porque__puntaje strong {
+  color: var(--accent-bright);
+}
+
+.dss-porque__texto {
+  padding: var(--sp-4);
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  background: rgba(212, 175, 106, 0.07);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.dss-desglose__lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dss-desglose__fila {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.3fr) minmax(80px, 1.8fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 1120px) {
+  .dss-escenarios,
+  .dss-parametros__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .dss-escenarios,
+  .dss-parametros__grid,
+  .etl-json-grid,
+  .etl-diff-caja {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .etl-diff-flecha {
+    display: none;
+  }
+}
+
 /* --- Responsive --- */
 @media (max-width: 1120px) {
   .inicio__rejilla,

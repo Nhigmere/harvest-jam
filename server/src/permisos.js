@@ -24,18 +24,22 @@ export const PERMISOS = Object.freeze({
   ELIMINAR_COMPRAS: 'ELIMINAR_COMPRAS',
   VER_REPORTES: 'VER_REPORTES',
   VER_AUDITORIA: 'VER_AUDITORIA',
+  VER_DSS: 'VER_DSS',
+  EJECUTAR_DSS: 'EJECUTAR_DSS',
+  VER_ETL: 'VER_ETL',
+  EJECUTAR_ETL: 'EJECUTAR_ETL',
 });
 
 const P = PERMISOS;
 const SOLO_LECTURA = [
   P.VER_DASHBOARD, P.VER_PRODUCTOS, P.VER_PROVEEDORES, P.VER_CLIENTES, P.VER_EMPLEADOS,
-  P.VER_VENTAS, P.VER_COMPRAS, P.VER_REPORTES, P.VER_AUDITORIA,
+  P.VER_VENTAS, P.VER_COMPRAS, P.VER_REPORTES, P.VER_AUDITORIA, P.VER_DSS, P.VER_ETL,
 ];
 
 // La llave es el nombre del rol en PostgreSQL.
 export const ROLES = Object.freeze({
   administrador: { nombre: 'Administrador', permisos: Object.values(PERMISOS) },
-  gerente: { nombre: 'Gerente', permisos: SOLO_LECTURA },
+  gerente: { nombre: 'Gerente', permisos: [...SOLO_LECTURA, P.EJECUTAR_DSS] },
   contador: { nombre: 'Contador', permisos: SOLO_LECTURA },
   comprador: {
     nombre: 'Comprador',
@@ -43,6 +47,7 @@ export const ROLES = Object.freeze({
       P.VER_DASHBOARD, P.VER_PRODUCTOS, P.EDITAR_PRODUCTOS,
       P.VER_PROVEEDORES, P.EDITAR_PROVEEDORES, P.ELIMINAR_PROVEEDORES,
       P.VER_COMPRAS, P.CREAR_COMPRAS, P.ELIMINAR_COMPRAS,
+      P.VER_DSS, P.EJECUTAR_DSS,
     ],
   },
   admin_clientes: {

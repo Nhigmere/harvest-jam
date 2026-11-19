@@ -3,8 +3,10 @@ import { useSesion } from './auth.jsx';
 import { Layout } from './componentes/Layout.jsx';
 import { Cargando, Vacio } from './componentes/ui.jsx';
 import Auditoria from './paginas/Auditoria.jsx';
+import BitacoraEtl from './paginas/BitacoraEtl.jsx';
 import Clientes from './paginas/Clientes.jsx';
 import Compras from './paginas/Compras.jsx';
+import Decisiones from './paginas/Decisiones.jsx';
 import Empleados from './paginas/Empleados.jsx';
 import Inicio from './paginas/Inicio.jsx';
 import Login from './paginas/Login.jsx';
@@ -27,7 +29,9 @@ const RUTAS = [
   { ruta: '/clientes', Pantalla: Clientes, permiso: 'VER_CLIENTES' },
   { ruta: '/proveedores', Pantalla: Proveedores, permiso: 'VER_PROVEEDORES' },
   { ruta: '/empleados', Pantalla: Empleados, permiso: 'VER_EMPLEADOS' },
+  { ruta: '/decisiones', Pantalla: Decisiones, permiso: 'VER_DSS' },
   { ruta: '/reportes', Pantalla: Reportes, permiso: 'VER_REPORTES' },
+  { ruta: '/etl', Pantalla: BitacoraEtl, permiso: 'VER_ETL' },
   { ruta: '/auditoria', Pantalla: Auditoria, permiso: 'VER_AUDITORIA' },
 ];
 
