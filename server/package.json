@@ -1,0 +1,20 @@
+{
+  "name": "harvest-jam-server",
+  "version": "2.0.0",
+  "private": true,
+  "description": "API REST de Harvest JAM (Node.js + Express + PostgreSQL)",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "db:setup": "node scripts/setup-db.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.13.1"
+  }
+}

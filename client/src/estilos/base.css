@@ -1,0 +1,276 @@
+/* =====================================================================
+   Harvest JAM · Tokens base y superficie global
+   Usa exclusivamente las variables definidas en :root.
+   ===================================================================== */
+
+@font-face {
+  font-family: 'Fira Sans';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fuentes/FiraSans-Regular.woff') format('woff');
+}
+@font-face {
+  font-family: 'Fira Sans';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fuentes/FiraSans-Medium.woff') format('woff');
+}
+@font-face {
+  font-family: 'Fira Sans';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fuentes/FiraSans-SemiBold.woff') format('woff');
+}
+@font-face {
+  font-family: 'Fira Sans';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fuentes/FiraSans-Bold.woff') format('woff');
+}
+@font-face {
+  font-family: 'Anton';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fuentes/Anton-Regular.woff') format('woff');
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Fondo */
+  --bg-base: #0B0B10;
+  --bg-radial-lila: rgba(109, 93, 246, 0.08);
+  --bg-radial-durazno: rgba(232, 185, 138, 0.07);
+
+  /* Vidrio (tarjetas) */
+  --glass-bg: rgba(255, 255, 255, 0.045);
+  --glass-bg-hover: rgba(255, 255, 255, 0.065);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-highlight: rgba(255, 255, 255, 0.14); /* canto superior */
+  --glass-blur: 24px;
+
+  /* Sidebar (un poco más opaco) */
+  --sidebar-bg: rgba(18, 17, 26, 0.55);
+  --sidebar-item-active: rgba(109, 93, 246, 0.14);
+  --sidebar-item-border: rgba(109, 93, 246, 0.35);
+
+  /* Texto (blanco roto, nunca #FFF puro) */
+  --text-primary: #F4F3F7;
+  --text-secondary: rgba(244, 243, 247, 0.62);
+  --text-muted: rgba(244, 243, 247, 0.40);
+
+  /* Acentos */
+  --accent: #6D5DF6;
+  --accent-soft: rgba(109, 93, 246, 0.15);
+  --accent-border: rgba(109, 93, 246, 0.35);
+  --gold: #E8B98A;
+  --grad-bar: linear-gradient(90deg, #6D5DF6 0%, #E8B98A 100%);
+
+  /* Estados */
+  --warning-bg: rgba(232, 185, 138, 0.12);
+  --warning-border: rgba(232, 185, 138, 0.30);
+  --warning-text: #E8B98A;
+  --danger-text: #F2698F;
+  --success-text: #6FE3B0;
+
+  /* Forma y sombra */
+  --radius-card: 18px;
+  --radius-control: 11px;
+  --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.35);
+  --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.25);
+
+  /* Espaciado */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px;
+  --sp-4: 16px; --sp-6: 24px; --sp-8: 32px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--bg-base);
+}
+
+/* El fondo con las dos manchas de color + noise */
+body {
+  position: relative;
+  margin: 0;
+  min-height: 100dvh;
+  font-family: 'Inter', 'Fira Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background:
+    radial-gradient(60% 50% at 15% 0%, var(--bg-radial-lila), transparent 70%),
+    radial-gradient(50% 50% at 100% 100%, var(--bg-radial-durazno), transparent 70%),
+    var(--bg-base);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Textura de grano (noise) muy sutil sobre el fondo */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.026;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* Tarjeta de vidrio (el canto superior es lo que la hace ver cristal) */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card), inset 0 1px 0 var(--glass-highlight);
+  transition: transform .18s ease-out, border-color .18s ease-out;
+}
+
+.glass-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Scrollbar sutil */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-highlight);
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+}
+
+h2 {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+h3 {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+a {
+  color: var(--text-secondary);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color .18s ease-out;
+}
+
+a:hover {
+  color: var(--text-primary);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+img,
+svg {
+  display: block;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent-border);
+  border-radius: var(--radius-control);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+.solo-lectores {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.numeros {
+  font-variant-numeric: tabular-nums;
+}
+
+.texto-2 {
+  color: var(--text-secondary);
+}
+
+.texto-3 {
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
