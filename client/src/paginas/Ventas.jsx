@@ -4,6 +4,7 @@ import { LuBan, LuReceiptText, LuShoppingBasket } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
+import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { PERIODOS, paramsPeriodo, textoPeriodo } from '../componentes/periodo.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import { AccionesTicket, Ticket } from '../componentes/Ticket.jsx';
@@ -105,17 +106,17 @@ export default function Ventas() {
       <MensajeError error={error} alReintentar={recargar} />
 
       {resumen && (
-        <div className={`cifras cifras--fila ${cargando ? 'recargando' : ''}`}>
-          <Cifra etiqueta={`Ingresos de ${textoPeriodo(periodo)}`} valor={monedaRedonda(resumen.ingresos)} />
-          <Cifra etiqueta="Ventas" valor={numero(resumen.ventas)} />
-          <Cifra etiqueta="Ticket promedio" valor={moneda(resumen.ticketPromedio)} />
-          <Cifra etiqueta="Clientes distintos" valor={numero(resumen.clientes)} />
+        <div className={`cifras cifras--fila lujo-brillo ${cargando ? 'recargando' : ''}`}>
+          <Cifra principal etiqueta={`Ingresos de ${textoPeriodo(periodo)}`} numeroAnimado={resumen.ingresos} formato={monedaRedonda} />
+          <Cifra etiqueta="Ventas" numeroAnimado={resumen.ventas} formato={numero} />
+          <Cifra etiqueta="Ticket promedio" numeroAnimado={resumen.ticketPromedio} formato={moneda} />
+          <Cifra etiqueta="Clientes distintos" numeroAnimado={resumen.clientes} formato={numero} />
         </div>
       )}
 
-      {cargando && !datos && <Cargando />}
+      {cargando && !datos && <EsqueletoTabla />}
       {datos && (
-        <section className="panel" aria-label="Lista de ventas">
+        <section className="panel lujo-brillo" aria-label="Lista de ventas">
           <Tabla
             etiqueta="Ventas"
             clave="folio"
@@ -123,7 +124,7 @@ export default function Ventas() {
             filas={datos.ventas}
             alAbrir={(v) => setAbierta(v.folio)}
             columnas={[
-              { clave: 'folio', titulo: 'Folio', render: (v) => <span className="numeros">{v.folio}</span>, ancho: '90px' },
+              { clave: 'folio', titulo: 'Folio', render: (v) => <span className="numeros codigo-mono">#{v.folio}</span>, ancho: '96px' },
               { clave: 'fecha', titulo: 'Fecha', render: (v) => fechaHora(v.fecha) },
               { clave: 'cliente', titulo: 'Cliente', render: (v) => nombrePropio(v.cliente) },
               { clave: 'empleado', titulo: 'Atendió', render: (v) => nombrePropio(v.empleado) },

@@ -1,6 +1,7 @@
 // Bitácora de auditoría: la llenan los triggers de la base de datos.
 import { useEffect, useState } from 'react';
 import { LuScrollText } from 'react-icons/lu';
+import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { Tabla } from '../componentes/Tabla.jsx';
 import { Buscador, CabeceraPagina, Cargando, MensajeError, Paginacion, Panel, Segmentado, Vacio } from '../componentes/ui.jsx';
 import { capitalizar, fechaHora, nombrePropio } from '../formato.js';
@@ -75,7 +76,7 @@ export default function Auditoria() {
       </div>
 
       <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && <Cargando />}
+      {cargando && !datos && <EsqueletoTabla filas={9} />}
 
       {datos && (
         <Panel>

@@ -1,7 +1,9 @@
-// Ticket de venta: se ve en pantalla, se imprime y se manda por WhatsApp.
-import { LuMessageCircle, LuPrinter } from 'react-icons/lu';
+// Ticket de venta: vista elegante en pantalla, impresión térmica limpia, WhatsApp y copia rápida.
+import { useState } from 'react';
+import { LuCheck, LuCopy, LuMessageCircle, LuPrinter } from 'react-icons/lu';
 import { useSesion } from '../auth.jsx';
 import { abreviaturaUnidad, capitalizar, fechaHora, moneda, nombrePropio, telefonoWhatsApp } from '../formato.js';
+import { useDialogos } from './dialogos.jsx';
 import { Boton } from './ui.jsx';
 
 const decimal = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 3 });
@@ -37,7 +39,7 @@ export function Ticket({ venta }) {
       </header>
 
       <dl className="ticket__datos">
-        <div><dt>Folio</dt><dd>{venta.folio}</dd></div>
+        <div><dt>Folio</dt><dd className="codigo-mono">#{venta.folio}</dd></div>
         <div><dt>Fecha</dt><dd>{fechaHora(venta.fecha)}</dd></div>
         <div><dt>Cliente</dt><dd>{esMostrador ? 'Público en general' : nombrePropio(venta.cliente?.nombre)}</dd></div>
         <div><dt>Atendió</dt><dd>{nombrePropio(venta.empleado?.nombre)}</dd></div>
@@ -76,20 +78,39 @@ export function Ticket({ venta }) {
 
 export function AccionesTicket({ venta }) {
   const { usuario } = useSesion();
+  const { avisar } = useDialogos();
+  const [copiado, setCopiado] = useState(false);
+
   const telefono = telefonoWhatsApp(venta.cliente?.telefono);
+  const texto = mensajeWhatsApp(venta, usuario.empresa);
   const enlace = telefono
-    ? `https://wa.me/${telefono}?text=${encodeURIComponent(mensajeWhatsApp(venta, usuario.empresa))}`
+    ? `https://wa.me/${telefono}?text=${encodeURIComponent(texto)}`
     : null;
+
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(texto.replace(/\*/g, ''));
+      setCopiado(true);
+      avisar('Ticket copiado al portapapeles');
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      avisar('No se pudo copiar automáticamente', 'error');
+    }
+  };
+
   return (
     <>
       {enlace ? (
         <a className="boton boton--secundario boton--normal" href={enlace} target="_blank" rel="noreferrer">
           <LuMessageCircle aria-hidden="true" className="boton__icono" />
-          Enviar por WhatsApp
+          WhatsApp
         </a>
       ) : (
         <span className="texto-3 ticket-sin-telefono">Sin teléfono para WhatsApp</span>
       )}
+      <Boton icono={copiado ? LuCheck : LuCopy} onClick={copiar}>
+        {copiado ? 'Copiado' : 'Copiar'}
+      </Boton>
       <Boton icono={LuPrinter} onClick={() => window.print()}>Imprimir</Boton>
     </>
   );

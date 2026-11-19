@@ -1,6 +1,4 @@
-// Gráficas en SVG/HTML hechas a mano (sin librerías).
-// Reglas: marcas delgadas, rejilla tenue, etiquetas solo donde cuentan,
-// tooltip que no esconde datos (cada gráfica tiene su vista de tabla).
+// Gráficas en SVG/HTML hechas a mano con estética Obsidian & Champagne Gold.
 import { useEffect, useId, useRef, useState } from 'react';
 import { LuChartColumn, LuTable } from 'react-icons/lu';
 import { moneda, monedaCompacta, numero } from '../formato.js';
@@ -61,7 +59,7 @@ function curvaSuave(coords, yMin, yMax) {
 
 function Tooltip({ visible, x, y, anchoContenedor, children }) {
   if (!visible) return null;
-  const izquierda = x > anchoContenedor - 170;
+  const izquierda = x > anchoContenedor - 180;
   return (
     <div
       className="grafica__tooltip"
@@ -74,7 +72,7 @@ function Tooltip({ visible, x, y, anchoContenedor, children }) {
 }
 
 // ---------------------------------------------------------------------
-// Área: una serie en el tiempo, con cruz que sigue al puntero
+// Área: serie temporal con trazo dorado champagne animado
 // ---------------------------------------------------------------------
 export function GraficaArea({
   puntos,
@@ -85,7 +83,7 @@ export function GraficaArea({
   formatoValor = moneda,
   detalleTooltip,
   etiqueta,
-  alto = 232,
+  alto = 240,
 }) {
   const ref = useRef(null);
   const ancho = useAncho(ref);
@@ -95,7 +93,7 @@ export function GraficaArea({
   const idGradArea = `area-${uid}`;
   const idGradLinea = `linea-${uid}`;
 
-  const m = { arriba: 18, derecha: 20, abajo: 32, izquierda: 56 };
+  const m = { arriba: 18, derecha: 20, abajo: 32, izquierda: 58 };
   const w = Math.max(ancho - m.izquierda - m.derecha, 10);
   const h = alto - m.arriba - m.abajo;
   const n = puntos.length;
@@ -109,7 +107,6 @@ export function GraficaArea({
   const linea = curvaSuave(coords, 0, h);
   const area = n ? `${linea} L${sx(n - 1).toFixed(1)},${h} L${sx(0).toFixed(1)},${h} Z` : '';
 
-  // Etiquetas del eje X: tantas como quepan (una cada ~76px).
   const cabenX = Math.max(Math.floor(w / 76), 2);
   const pasoX = Math.max(Math.ceil(n / cabenX), 1);
   const indicesX = puntos.map((_, i) => i).filter((i) => i % pasoX === 0);
@@ -150,13 +147,14 @@ export function GraficaArea({
         <svg width={ancho} height={alto} aria-hidden="true">
           <defs>
             <linearGradient id={idGradArea} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6D5DF6" stopOpacity="0.22" />
-              <stop offset="58%" stopColor="#E8B98A" stopOpacity="0.04" />
-              <stop offset="100%" stopColor="#0B0B10" stopOpacity="0" />
+              <stop offset="0%" stopColor="#D4AF6A" stopOpacity="0.28" />
+              <stop offset="60%" stopColor="#D4AF6A" stopOpacity="0.05" />
+              <stop offset="100%" stopColor="#070706" stopOpacity="0" />
             </linearGradient>
             <linearGradient id={idGradLinea} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#6D5DF6" />
-              <stop offset="100%" stopColor="#E8B98A" />
+              <stop offset="0%" stopColor="#B8914A" />
+              <stop offset="55%" stopColor="#D4AF6A" />
+              <stop offset="100%" stopColor="#F0D8A8" />
             </linearGradient>
           </defs>
           <g transform={`translate(${m.izquierda},${m.arriba})`}>
@@ -172,13 +170,13 @@ export function GraficaArea({
               </text>
             ))}
             <path d={area} fill={`url(#${idGradArea})`} className="grafica__area" />
-            <path d={linea} stroke={`url(#${idGradLinea})`} className="grafica__linea" />
+            <path d={linea} pathLength="1" stroke={`url(#${idGradLinea})`} className="grafica__linea" />
             {ultimo && (
               <>
-                <circle cx={sx(n - 1)} cy={sy(ultimo[campoY])} r={8} className="grafica__halo" />
-                <circle cx={sx(n - 1)} cy={sy(ultimo[campoY])} r={3.5} className="grafica__punto" />
+                <circle cx={sx(n - 1)} cy={sy(ultimo[campoY])} r={9} className="grafica__halo" />
+                <circle cx={sx(n - 1)} cy={sy(ultimo[campoY])} r={3.8} className="grafica__punto" />
                 {activo === null && (
-                  <text x={sx(n - 1) - 10} y={sy(ultimo[campoY]) - 11} textAnchor="end" className="grafica__valor">
+                  <text x={sx(n - 1) - 10} y={sy(ultimo[campoY]) - 12} textAnchor="end" className="grafica__valor">
                     {formatoValor(ultimo[campoY])}
                   </text>
                 )}
@@ -187,8 +185,8 @@ export function GraficaArea({
             {pActivo && (
               <>
                 <line x1={sx(activo)} x2={sx(activo)} y1={0} y2={h} className="grafica__cruz" />
-                <circle cx={sx(activo)} cy={sy(pActivo[campoY])} r={9} className="grafica__halo" />
-                <circle cx={sx(activo)} cy={sy(pActivo[campoY])} r={4} className="grafica__punto" />
+                <circle cx={sx(activo)} cy={sy(pActivo[campoY])} r={10} className="grafica__halo" />
+                <circle cx={sx(activo)} cy={sy(pActivo[campoY])} r={4.2} className="grafica__punto" />
               </>
             )}
             <rect
@@ -221,9 +219,9 @@ export function GraficaArea({
 }
 
 // ---------------------------------------------------------------------
-// Columnas: una barra por categoría ordenada (por ejemplo, horas del día)
+// Columnas: horas del día con barra pico resaltada en oro brillante
 // ---------------------------------------------------------------------
-export function GraficaColumnas({ datos, campoX, campoY, formatoX = (v) => v, formatoValor = numero, detalleTooltip, etiqueta, alto = 220 }) {
+export function GraficaColumnas({ datos, campoX, campoY, formatoX = (v) => v, formatoValor = numero, detalleTooltip, etiqueta, alto = 224 }) {
   const ref = useRef(null);
   const ancho = useAncho(ref);
   const [activo, setActivo] = useState(null);
@@ -252,12 +250,12 @@ export function GraficaColumnas({ datos, campoX, campoY, formatoX = (v) => v, fo
         <svg width={ancho} height={alto}>
           <defs>
             <linearGradient id={idGradBarra} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6D5DF6" stopOpacity="0.82" />
-              <stop offset="100%" stopColor="#6D5DF6" stopOpacity="0.22" />
+              <stop offset="0%" stopColor="#D4AF6A" stopOpacity="0.62" />
+              <stop offset="100%" stopColor="#B8914A" stopOpacity="0.16" />
             </linearGradient>
             <linearGradient id={idGradActiva} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#E8B98A" stopOpacity="0.96" />
-              <stop offset="100%" stopColor="#6D5DF6" stopOpacity="0.48" />
+              <stop offset="0%" stopColor="#F2DAA8" stopOpacity="0.98" />
+              <stop offset="100%" stopColor="#C99E52" stopOpacity="0.45" />
             </linearGradient>
           </defs>
           <g transform={`translate(${m.izquierda},${m.arriba})`}>
@@ -329,7 +327,7 @@ export function GraficaColumnas({ datos, campoX, campoY, formatoX = (v) => v, fo
 }
 
 // ---------------------------------------------------------------------
-// Barras horizontales ordenadas (ranking), un solo color
+// Barras horizontales ordenadas (ranking)
 // ---------------------------------------------------------------------
 export function BarrasRanking({ datos, campoEtiqueta, campoValor, formatoValor = moneda, detalle, etiqueta }) {
   const maximo = Math.max(0, ...datos.map((d) => d[campoValor]));
@@ -352,13 +350,15 @@ export function BarrasRanking({ datos, campoEtiqueta, campoValor, formatoValor =
 }
 
 // ---------------------------------------------------------------------
-// Barra segmentada alta: un total partido en pocas partes
+// Barra segmentada alta: distribución por categorías
 // ---------------------------------------------------------------------
 const SERIES = [
-  'var(--accent)',
-  'var(--gold)',
-  'var(--success-text)',
+  'linear-gradient(135deg, #e7c98f 0%, #c99e52 100%)',
+  'linear-gradient(135deg, #56d49f 0%, #2f9b6d 100%)',
+  'linear-gradient(135deg, #9ec0f4 0%, #6088c4 100%)',
 ];
+
+const MUESTRAS = ['#d4af6a', '#56d49f', '#9ec0f4'];
 
 export function BarraSegmentada({ partes, formatoValor = moneda, etiqueta }) {
   const total = partes.reduce((s, p) => s + p.valor, 0);
@@ -374,7 +374,7 @@ export function BarraSegmentada({ partes, formatoValor = moneda, etiqueta }) {
           return (
             <div
               key={p.nombre}
-              className={`segmentos__parte ${i === 1 ? 'segmentos__parte--clara' : ''}`}
+              className="segmentos__parte"
               style={{ flexGrow: p.valor, background: SERIES[i % SERIES.length] }}
               title={`${p.nombre}: ${formatoValor(p.valor)}`}
             >
@@ -386,7 +386,7 @@ export function BarraSegmentada({ partes, formatoValor = moneda, etiqueta }) {
       <figcaption className="segmentos__leyenda">
         {partes.map((p, i) => (
           <span key={p.nombre} className="segmentos__clave">
-            <span className="segmentos__muestra" style={{ background: SERIES[i % SERIES.length] }} aria-hidden="true" />
+            <span className="segmentos__muestra" style={{ background: MUESTRAS[i % MUESTRAS.length] }} aria-hidden="true" />
             {p.nombre} <span className="texto-2 numeros">{formatoValor(p.valor)}</span>
           </span>
         ))}

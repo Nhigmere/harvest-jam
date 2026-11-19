@@ -1,19 +1,21 @@
-// Marco de la aplicación: menú lateral según el rol y área de trabajo.
-import { useEffect, useState } from 'react';
+// Marco de la aplicación: menú lateral Obsidian Atelier, paleta ⌘K y área de trabajo.
+import { useCallback, useEffect, useState } from 'react';
 import {
   LuApple, LuChartColumn, LuIdCard, LuLayoutDashboard, LuLogOut, LuMenu, LuPackagePlus,
-  LuPanelLeftClose, LuPanelLeftOpen, LuReceiptText, LuScrollText, LuShoppingBasket, LuTruck, LuUsers, LuX,
+  LuPanelLeftClose, LuPanelLeftOpen, LuReceiptText, LuScrollText, LuSearch, LuShoppingBasket, LuTruck, LuUsers, LuX,
 } from 'react-icons/lu';
 import { useSesion } from '../auth.jsx';
 import { iniciales, nombrePropio } from '../formato.js';
 import { NavLink, useUbicacion } from '../router.jsx';
+import { PaletaComandos } from './Comandos.jsx';
+import { useSpotlight } from './Efectos.jsx';
 
 export const MENU = [
   {
     grupo: 'Operación',
     items: [
       { ruta: '/', etiqueta: 'Inicio', icono: LuLayoutDashboard, permiso: 'VER_DASHBOARD', exacto: true },
-      { ruta: '/vender', etiqueta: 'Vender', icono: LuShoppingBasket, permiso: 'CREAR_VENTAS' },
+      { ruta: '/vender', etiqueta: 'Vender', icono: LuShoppingBasket, permiso: 'CREAR_VENTAS', destacar: true },
       { ruta: '/ventas', etiqueta: 'Ventas', icono: LuReceiptText, permiso: 'VER_VENTAS' },
       { ruta: '/compras', etiqueta: 'Compras', icono: LuPackagePlus, permiso: 'VER_COMPRAS' },
     ],
@@ -40,9 +42,12 @@ export function Marca({ compacta = false }) {
   return (
     <span className={`marca ${compacta ? 'marca--compacta' : ''}`}>
       <span className="marca__frasco">
-        <img src="/logo.png" alt="" width="28" height="28" />
+        <img src="/logo.png" alt="" width="26" height="26" />
       </span>
-      <span className="marca__nombre">Harvest JAM</span>
+      <span className="marca__texto">
+        <span className="marca__nombre">Harvest JAM</span>
+        <span className="marca__sub">Atelier POS</span>
+      </span>
     </span>
   );
 }
@@ -51,6 +56,7 @@ export function Layout({ children, completa = false }) {
   const { usuario, puede, salir } = useSesion();
   const { pathname } = useUbicacion();
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [comandosAbiertos, setComandosAbiertos] = useState(false);
   const [menuCompacto, setMenuCompacto] = useState(() => {
     try {
       return localStorage.getItem('harvest-jam:menu-compacto') === '1';
@@ -59,9 +65,23 @@ export function Layout({ children, completa = false }) {
     }
   });
 
+  useSpotlight();
+
   useEffect(() => setMenuAbierto(false), [pathname]);
 
-  const alternarCompacto = () => {
+  // Atajo global ⌘K / Ctrl+K para la paleta de comandos
+  useEffect(() => {
+    const alTeclado = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setComandosAbiertos((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', alTeclado);
+    return () => window.removeEventListener('keydown', alTeclado);
+  }, []);
+
+  const alternarCompacto = useCallback(() => {
     setMenuCompacto((prev) => {
       const siguiente = !prev;
       try {
@@ -71,9 +91,10 @@ export function Layout({ children, completa = false }) {
       }
       return siguiente;
     });
-  };
+  }, []);
 
   const nombre = nombrePropio(usuario.empleado?.nombre ?? usuario.usuario);
+  const esMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform ?? '');
 
   return (
     <div className={`app ${menuAbierto ? 'app--menu-abierto' : ''} ${menuCompacto ? 'app--menu-compacto' : ''}`}>
@@ -84,6 +105,15 @@ export function Layout({ children, completa = false }) {
           <LuMenu aria-hidden="true" />
         </button>
         <Marca />
+        <button
+          type="button"
+          className="barra-movil__buscar"
+          onClick={() => setComandosAbiertos(true)}
+          aria-label="Abrir paleta de comandos"
+          title="Buscar acciones (⌘K)"
+        >
+          <LuSearch aria-hidden="true" />
+        </button>
       </header>
 
       <aside className="menu" aria-label="Menú principal">
@@ -103,6 +133,18 @@ export function Layout({ children, completa = false }) {
           </button>
         </div>
 
+        <button
+          type="button"
+          className="menu__comando"
+          onClick={() => setComandosAbiertos(true)}
+          title="Paleta de comandos (⌘K)"
+          aria-label="Abrir paleta de comandos"
+        >
+          <LuSearch aria-hidden="true" />
+          <span className="menu__comando-texto">Ir rápido…</span>
+          <kbd>{esMac ? '⌘K' : 'Ctrl+K'}</kbd>
+        </button>
+
         <nav className="menu__nav">
           {MENU.map((seccion) => {
             const visibles = seccion.items.filter((i) => puede(i.permiso));
@@ -111,7 +153,7 @@ export function Layout({ children, completa = false }) {
               <div key={seccion.grupo} className="menu__grupo">
                 <p className="menu__grupo-titulo">{seccion.grupo}</p>
                 <ul>
-                  {visibles.map(({ ruta, etiqueta, icono: Icono, exacto }) => (
+                  {visibles.map(({ ruta, etiqueta, icono: Icono, exacto, destacar }) => (
                     <li key={ruta}>
                       <NavLink
                         to={ruta}
@@ -122,6 +164,7 @@ export function Layout({ children, completa = false }) {
                       >
                         <Icono aria-hidden="true" />
                         <span>{etiqueta}</span>
+                        {destacar && !menuCompacto && <span className="menu__enlace-pulso" aria-hidden="true" />}
                       </NavLink>
                     </li>
                   ))}
@@ -150,6 +193,14 @@ export function Layout({ children, completa = false }) {
       <main id="contenido" className={`contenido ${completa ? 'contenido--completo' : ''}`} tabIndex={-1}>
         {children}
       </main>
+
+      <PaletaComandos
+        abierto={comandosAbiertos}
+        alCerrar={() => setComandosAbiertos(false)}
+        menu={MENU}
+        menuCompacto={menuCompacto}
+        alAlternarCompacto={alternarCompacto}
+      />
     </div>
   );
 }

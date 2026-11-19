@@ -4,6 +4,7 @@ import { LuApple, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
+import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { useFormulario } from '../componentes/formulario.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import {
@@ -231,7 +232,7 @@ export default function Productos() {
       </div>
 
       <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && <Cargando />}
+      {cargando && !datos && <EsqueletoTabla />}
 
       {datos && (
         <Panel>

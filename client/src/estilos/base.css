@@ -1,6 +1,6 @@
 /* =====================================================================
-   Harvest JAM · Tokens base y superficie global
-   Usa exclusivamente las variables definidas en :root.
+   Harvest JAM · Obsidian Atelier & Champagne Gold Design System
+   Tokens semánticos, tipografía, superficies y física de movimiento.
    ===================================================================== */
 
 @font-face {
@@ -42,51 +42,95 @@
 :root {
   color-scheme: dark;
 
-  /* Fondo */
-  --bg-base: #0B0B10;
-  --bg-radial-lila: rgba(109, 93, 246, 0.08);
-  --bg-radial-durazno: rgba(232, 185, 138, 0.07);
+  /* --- Paleta Obsidian Atelier --- */
+  --bg-void: #070706;
+  --bg-base: #0a0908;
+  --bg-surface-1: #11100d;
+  --bg-surface-2: #171512;
+  --bg-surface-3: #201d18;
+  --bg-elevated: rgba(24, 22, 18, 0.86);
 
-  /* Vidrio (tarjetas) */
-  --glass-bg: rgba(255, 255, 255, 0.045);
-  --glass-bg-hover: rgba(255, 255, 255, 0.065);
-  --glass-border: rgba(255, 255, 255, 0.09);
-  --glass-highlight: rgba(255, 255, 255, 0.14); /* canto superior */
-  --glass-blur: 24px;
+  /* Resplandores ambientales cálidos (sin ruido artificial) */
+  --ambient-gold: rgba(212, 175, 106, 0.085);
+  --ambient-emerald: rgba(52, 179, 126, 0.045);
 
-  /* Sidebar (un poco más opaco) */
-  --sidebar-bg: rgba(18, 17, 26, 0.55);
-  --sidebar-item-active: rgba(109, 93, 246, 0.14);
-  --sidebar-item-border: rgba(109, 93, 246, 0.35);
+  /* Superficies cristalinas oscuras */
+  --glass-bg: rgba(25, 23, 19, 0.72);
+  --glass-bg-hover: rgba(34, 31, 26, 0.86);
+  --glass-bg-subtle: rgba(255, 248, 235, 0.03);
+  --glass-border: rgba(235, 222, 196, 0.09);
+  --glass-border-strong: rgba(235, 222, 196, 0.17);
+  --glass-highlight: rgba(255, 246, 228, 0.11);
+  --glass-blur: 22px;
 
-  /* Texto (blanco roto, nunca #FFF puro) */
-  --text-primary: #F4F3F7;
-  --text-secondary: rgba(244, 243, 247, 0.62);
-  --text-muted: rgba(244, 243, 247, 0.40);
+  /* Sidebar arquitectónico */
+  --sidebar-bg: rgba(15, 14, 11, 0.88);
+  --sidebar-item-active: rgba(212, 175, 106, 0.13);
+  --sidebar-item-border: rgba(212, 175, 106, 0.36);
 
-  /* Acentos */
-  --accent: #6D5DF6;
-  --accent-soft: rgba(109, 93, 246, 0.15);
-  --accent-border: rgba(109, 93, 246, 0.35);
-  --gold: #E8B98A;
-  --grad-bar: linear-gradient(90deg, #6D5DF6 0%, #E8B98A 100%);
+  /* Texto alabastro cálido (contraste WCAG AA+ en todas las capas) */
+  --text-primary: #f5f2eb;
+  --text-secondary: #b8b2a5;
+  --text-muted: #8c8578;
 
-  /* Estados */
-  --warning-bg: rgba(232, 185, 138, 0.12);
-  --warning-border: rgba(232, 185, 138, 0.30);
-  --warning-text: #E8B98A;
-  --danger-text: #F2698F;
-  --success-text: #6FE3B0;
+  /* Acento principal: Champagne Gold bruñido */
+  --accent: #d4af6a;
+  --accent-bright: #ebd09c;
+  --accent-deep: #b38b46;
+  --accent-ink: #120f0a;
+  --accent-soft: rgba(212, 175, 106, 0.14);
+  --accent-soft-hover: rgba(212, 175, 106, 0.22);
+  --accent-border: rgba(212, 175, 106, 0.42);
+  --gold: #d4af6a;
+  --grad-gold: linear-gradient(135deg, #e7c98f 0%, #c99e52 55%, #b1863f 100%);
+  --grad-bar: linear-gradient(90deg, #b8914a 0%, #e7c98f 100%);
 
-  /* Forma y sombra */
-  --radius-card: 18px;
-  --radius-control: 11px;
-  --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.35);
-  --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.25);
+  /* Estados semánticos refinados */
+  --success-bg: rgba(52, 179, 126, 0.12);
+  --success-border: rgba(52, 179, 126, 0.34);
+  --success-text: #56d49f;
 
-  /* Espaciado */
-  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px;
-  --sp-4: 16px; --sp-6: 24px; --sp-8: 32px;
+  --warning-bg: rgba(229, 169, 82, 0.13);
+  --warning-border: rgba(229, 169, 82, 0.34);
+  --warning-text: #f0bc6e;
+
+  --danger-bg: rgba(226, 92, 114, 0.12);
+  --danger-border: rgba(226, 92, 114, 0.38);
+  --danger-text: #f2798e;
+
+  --info-bg: rgba(140, 176, 232, 0.12);
+  --info-border: rgba(140, 176, 232, 0.34);
+  --info-text: #9ec0f4;
+
+  /* Tipografía */
+  --font-display: 'Cormorant Garamond', 'Georgia', serif;
+  --font-sans: 'Plus Jakarta Sans', 'Fira Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Radios y elevación */
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --radius-pill: 999px;
+  --shadow-card: 0 18px 42px -12px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.32);
+  --shadow-soft: 0 8px 24px -6px rgba(0, 0, 0, 0.42);
+  --shadow-gold: 0 10px 30px -8px rgba(212, 175, 106, 0.28);
+
+  /* Movimiento (curvas de lujo y respuesta rápida) */
+  --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 140ms;
+  --dur-med: 240ms;
+  --dur-slow: 420ms;
+
+  /* Escala espacial 4/8px */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
 }
 
 *,
@@ -97,61 +141,73 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  background: var(--bg-base);
+  background: var(--bg-void);
+  scroll-behavior: smooth;
 }
 
-/* El fondo con las dos manchas de color + noise */
 body {
   position: relative;
   margin: 0;
   min-height: 100dvh;
-  font-family: 'Inter', 'Fira Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--text-primary);
+  caret-color: var(--accent);
   background:
-    radial-gradient(60% 50% at 15% 0%, var(--bg-radial-lila), transparent 70%),
-    radial-gradient(50% 50% at 100% 100%, var(--bg-radial-durazno), transparent 70%),
-    var(--bg-base);
+    radial-gradient(58% 46% at 14% 0%, var(--ambient-gold), transparent 72%),
+    radial-gradient(48% 48% at 96% 96%, var(--ambient-emerald), transparent 70%),
+    linear-gradient(180deg, var(--bg-base) 0%, var(--bg-void) 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-/* Textura de grano (noise) muy sutil sobre el fondo */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.026;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
-}
-
-/* Tarjeta de vidrio (el canto superior es lo que la hace ver cristal) */
-.glass-card {
+/* Superficie de lujo con reflejo especular superior y seguimiento de luz sutil */
+.glass-card,
+.lujo-brillo {
+  position: relative;
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(130%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(130%);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--glass-highlight);
-  transition: transform .18s ease-out, border-color .18s ease-out;
+  transition:
+    border-color var(--dur-med) var(--ease-luxury),
+    box-shadow var(--dur-med) var(--ease-luxury),
+    background-color var(--dur-med) var(--ease-luxury);
+}
+
+.lujo-brillo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(212, 175, 106, 0.08),
+    transparent 62%
+  );
+  transition: opacity 280ms var(--ease-luxury);
+}
+
+.lujo-brillo:hover::before {
+  opacity: 1;
 }
 
 .glass-card:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: var(--glass-border-strong);
 }
 
-/* Scrollbar sutil */
+/* Scrollbar personalizado de la paleta */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--glass-border) transparent;
+  scrollbar-color: rgba(212, 175, 106, 0.22) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -164,12 +220,12 @@ body::after {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: var(--glass-border);
-  border-radius: 999px;
+  background: rgba(212, 175, 106, 0.22);
+  border-radius: var(--radius-pill);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--glass-highlight);
+  background: rgba(212, 175, 106, 0.42);
 }
 
 h1,
@@ -181,16 +237,18 @@ p {
 }
 
 h1 {
-  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
   font-weight: 500;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
   color: var(--text-primary);
+  text-wrap: balance;
 }
 
 h2 {
   font-size: 0.9375rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.015em;
   color: var(--text-primary);
@@ -198,15 +256,16 @@ h2 {
 
 h3 {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 a {
-  color: var(--text-secondary);
+  color: var(--accent-bright);
+  text-decoration: none;
   text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-  transition: color .18s ease-out;
+  text-underline-offset: 4px;
+  transition: color var(--dur-fast) var(--ease-snappy), opacity var(--dur-fast) var(--ease-snappy);
 }
 
 a:hover {
@@ -230,14 +289,32 @@ svg {
   display: block;
 }
 
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--glass-border-strong);
+  border-radius: 6px;
+  background: rgba(255, 250, 240, 0.04);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent-border);
+  box-shadow: 0 0 0 2px var(--bg-void), 0 0 0 4px var(--accent-border);
   border-radius: var(--radius-control);
 }
 
 ::selection {
-  background: var(--accent-soft);
+  background: rgba(212, 175, 106, 0.28);
   color: var(--text-primary);
 }
 
@@ -257,6 +334,12 @@ svg {
   font-variant-numeric: tabular-nums;
 }
 
+.codigo-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125em;
+  letter-spacing: -0.01em;
+}
+
 .texto-2 {
   color: var(--text-secondary);
 }
@@ -265,12 +348,120 @@ svg {
   color: var(--text-muted);
 }
 
+/* --- Keyframes del sistema --- */
+@keyframes vistaEntrar {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes modalEntrar {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes esqueletoBrillo {
+  0% {
+    background-position: -220% 0;
+  }
+  100% {
+    background-position: 220% 0;
+  }
+}
+
+@keyframes pulsoOro {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 106, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(212, 175, 106, 0);
+  }
+}
+
+@keyframes lineaDibujar {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes barraCrecer {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes barraAncho {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes toastEntrar {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toastTiempo {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes popSuave {
+  0% {
+    transform: scale(0.86);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 80ms !important;
+  }
+  .lujo-brillo::before {
+    display: none;
   }
 }

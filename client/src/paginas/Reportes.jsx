@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { LuDownload } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useDialogos } from '../componentes/dialogos.jsx';
+import { EsqueletoDashboard } from '../componentes/Efectos.jsx';
 import { BarraSegmentada, BarrasRanking, GraficaArea, GraficaColumnas, PanelGrafica } from '../componentes/graficas.jsx';
 import { PERIODOS, paramsPeriodo, textoPeriodo } from '../componentes/periodo.js';
 import { Tabla } from '../componentes/Tabla.jsx';
@@ -119,16 +120,16 @@ export default function Reportes() {
       </div>
 
       <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && <Cargando />}
+      {cargando && !datos && <EsqueletoDashboard />}
 
       {datos && (
         <div className={`reportes ${cargando ? 'recargando' : ''}`}>
-          <div className="cifras cifras--fila">
-            <Cifra principal etiqueta="Ingresos" valor={monedaRedonda(r.ingresos)} variacion={r.variacionIngresos} detalle=" contra el periodo anterior" />
-            <Cifra etiqueta="Ventas" valor={numero(r.ventas)} variacion={r.variacionVentas} />
-            <Cifra etiqueta="Ticket promedio" valor={moneda(r.ticketPromedio)} />
-            <Cifra etiqueta="Margen estimado" valor={monedaRedonda(r.margenEstimado)} detalle="con el costo actual" />
-            <Cifra etiqueta="Gasto en compras" valor={monedaRedonda(r.compras.gasto)} detalle={plural(r.compras.compras, 'compra', 'compras')} />
+          <div className="cifras cifras--fila lujo-brillo">
+            <Cifra principal etiqueta="Ingresos" numeroAnimado={r.ingresos} formato={monedaRedonda} variacion={r.variacionIngresos} detalle="contra el periodo anterior" />
+            <Cifra etiqueta="Ventas" numeroAnimado={r.ventas} formato={numero} variacion={r.variacionVentas} />
+            <Cifra etiqueta="Ticket promedio" numeroAnimado={r.ticketPromedio} formato={moneda} />
+            <Cifra etiqueta="Margen estimado" numeroAnimado={r.margenEstimado} formato={monedaRedonda} detalle="con el costo actual" />
+            <Cifra etiqueta="Gasto en compras" numeroAnimado={r.compras.gasto} formato={monedaRedonda} detalle={plural(r.compras.compras, 'compra', 'compras')} />
           </div>
 
           <PanelGrafica

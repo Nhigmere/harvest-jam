@@ -1,7 +1,8 @@
-// Piezas básicas de la interfaz.
+// Piezas base de la interfaz Harvest JAM Atelier.
 import { useId } from 'react';
 import { LuChevronLeft, LuChevronRight, LuCircleAlert, LuCircleCheck, LuSearch, LuTriangleAlert, LuX } from 'react-icons/lu';
 import { numero } from '../formato.js';
+import { ContadorAnimado } from './Efectos.jsx';
 
 export function Boton({ variante = 'secundario', talla = 'normal', icono: Icono, cargando = false, children, className = '', ...resto }) {
   return (
@@ -52,7 +53,7 @@ export function Campo({ etiqueta, ayuda, error, opcional = false, children, clas
   );
 }
 
-export function Buscador({ valor, alCambiar, etiqueta = 'Buscar', placeholder, inputRef, className = '', ...resto }) {
+export function Buscador({ valor, alCambiar, etiqueta = 'Buscar', placeholder, inputRef, atajo, className = '', ...resto }) {
   return (
     <div className={`buscador ${className}`}>
       <LuSearch className="buscador__icono" aria-hidden="true" />
@@ -66,6 +67,7 @@ export function Buscador({ valor, alCambiar, etiqueta = 'Buscar', placeholder, i
         aria-label={etiqueta}
         {...resto}
       />
+      {!valor && atajo && <kbd className="buscador__atajo" aria-hidden="true">{atajo}</kbd>}
       {valor && (
         <button type="button" className="buscador__limpiar" onClick={() => alCambiar('')} aria-label="Borrar búsqueda">
           <LuX aria-hidden="true" />
@@ -111,7 +113,7 @@ export function Insignia({ tono = 'neutro', icono, children, className = '' }) {
 
 export function Panel({ titulo, descripcion, acciones, children, className = '', cuerpoClassName = '', id }) {
   return (
-    <section className={`panel glass-card ${className}`} aria-labelledby={titulo ? `${id ?? titulo}-titulo` : undefined}>
+    <section className={`panel glass-card lujo-brillo ${className}`} aria-labelledby={titulo ? `${id ?? titulo}-titulo` : undefined}>
       {(titulo || acciones) && (
         <header className="panel__cabecera">
           <div>
@@ -129,7 +131,11 @@ export function Panel({ titulo, descripcion, acciones, children, className = '',
 export function Vacio({ icono: Icono, titulo, children, accion }) {
   return (
     <div className="vacio">
-      {Icono && <Icono className="vacio__icono" aria-hidden="true" />}
+      {Icono && (
+        <span className="vacio__icono-caja" aria-hidden="true">
+          <Icono className="vacio__icono" />
+        </span>
+      )}
       <p className="vacio__titulo">{titulo}</p>
       {children && <p className="vacio__texto">{children}</p>}
       {accion}
@@ -189,13 +195,16 @@ export function CabeceraPagina({ titulo, descripcion, acciones, children }) {
   );
 }
 
-// Cifra con etiqueta y, opcionalmente, su cambio contra el periodo anterior.
-export function Cifra({ etiqueta, valor, detalle, variacion, principal = false }) {
+// Cifra con etiqueta, animación numérica opcional y variación contra periodo anterior.
+export function Cifra({ etiqueta, valor, numeroAnimado, formato, detalle, variacion, principal = false }) {
   const tono = variacion === null || variacion === undefined ? null : variacion >= 0 ? 'sube' : 'baja';
+  const contenidoValor = numeroAnimado !== undefined
+    ? <ContadorAnimado valor={numeroAnimado} formato={formato} />
+    : valor;
   return (
     <div className={`cifra ${principal ? 'cifra--principal' : ''}`}>
       <p className="cifra__etiqueta">{etiqueta}</p>
-      <p className="cifra__valor">{valor}</p>
+      <p className="cifra__valor">{contenidoValor}</p>
       {(detalle || tono) && (
         <p className="cifra__detalle">
           {tono && (

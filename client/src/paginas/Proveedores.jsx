@@ -4,6 +4,7 @@ import { LuPencil, LuPlus, LuTrash2, LuTruck } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
+import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { useFormulario } from '../componentes/formulario.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import { Boton, Buscador, CabeceraPagina, Campo, Cargando, MensajeError, Panel, Vacio } from '../componentes/ui.jsx';
@@ -148,7 +149,7 @@ export default function Proveedores() {
       </div>
 
       <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && <Cargando />}
+      {cargando && !datos && <EsqueletoTabla />}
 
       {datos && (
         <Panel>

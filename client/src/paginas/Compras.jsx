@@ -4,6 +4,7 @@ import { LuPackagePlus, LuTrash2, LuTruck } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
+import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { PERIODOS, paramsPeriodo, textoPeriodo } from '../componentes/periodo.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import {
@@ -141,17 +142,17 @@ export default function Compras() {
       <MensajeError error={error} alReintentar={recargar} />
 
       {resumen && (
-        <div className={`cifras cifras--fila ${cargando ? 'recargando' : ''}`}>
-          <Cifra etiqueta={`Gasto de ${textoPeriodo(periodo)}`} valor={monedaRedonda(resumen.gasto)} />
-          <Cifra etiqueta="Compras" valor={numero(resumen.compras)} />
-          <Cifra etiqueta="Promedio por compra" valor={moneda(resumen.promedio)} />
-          <Cifra etiqueta="Proveedores" valor={numero(resumen.proveedores)} />
+        <div className={`cifras cifras--fila lujo-brillo ${cargando ? 'recargando' : ''}`}>
+          <Cifra principal etiqueta={`Gasto de ${textoPeriodo(periodo)}`} numeroAnimado={resumen.gasto} formato={monedaRedonda} />
+          <Cifra etiqueta="Compras" numeroAnimado={resumen.compras} formato={numero} />
+          <Cifra etiqueta="Promedio por compra" numeroAnimado={resumen.promedio} formato={moneda} />
+          <Cifra etiqueta="Proveedores" numeroAnimado={resumen.proveedores} formato={numero} />
         </div>
       )}
 
-      {cargando && !datos && <Cargando />}
+      {cargando && !datos && <EsqueletoTabla />}
       {datos && (
-        <section className="panel" aria-label="Lista de compras">
+        <section className="panel lujo-brillo" aria-label="Lista de compras">
           <Tabla
             etiqueta="Compras"
             clave="folio"
@@ -159,7 +160,7 @@ export default function Compras() {
             filas={datos.compras}
             alAbrir={(c) => setAbierta(c.folio)}
             columnas={[
-              { clave: 'folio', titulo: 'Folio', render: (c) => <span className="numeros">{c.folio}</span>, ancho: '90px' },
+              { clave: 'folio', titulo: 'Folio', render: (c) => <span className="numeros codigo-mono">#{c.folio}</span>, ancho: '96px' },
               { clave: 'lote', titulo: 'Lote', render: (c) => <span className="numeros texto-2">{c.lote ?? '—'}</span> },
               { clave: 'fecha', titulo: 'Fecha', render: (c) => fechaHora(c.fecha) },
               { clave: 'proveedor', titulo: 'Proveedor', render: (c) => nombrePropio(c.proveedor) },

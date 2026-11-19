@@ -4,6 +4,7 @@ import { LuPencil, LuTrash2, LuUserPlus, LuUsers } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
+import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { useFormulario } from '../componentes/formulario.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import {
@@ -156,7 +157,7 @@ export default function Clientes() {
       </div>
 
       <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && <Cargando />}
+      {cargando && !datos && <EsqueletoTabla />}
 
       {datos && (
         <Panel>
@@ -183,7 +184,7 @@ export default function Clientes() {
                   ? <Insignia tono="info" icono={false}>Mostrador</Insignia>
                   : <Insignia tono="neutro" icono={false}>{c.tipo === 'fisica' ? 'Física' : 'Moral'}</Insignia>),
               },
-              { clave: 'rfc', titulo: 'RFC', render: (c) => <span className="numeros">{c.rfc ?? '—'}</span> },
+              { clave: 'rfc', titulo: 'RFC', render: (c) => <span className="numeros codigo-mono">{c.rfc ?? '—'}</span> },
               { clave: 'telefono', titulo: 'Teléfono', render: (c) => <span className="numeros">{c.telefono ?? '—'}</span> },
               { clave: 'domicilio', titulo: 'Domicilio', render: (c) => <span className="texto-2">{capitalizar(c.domicilio ?? '') || '—'}</span> },
               ...(puedeEditar ? [{
