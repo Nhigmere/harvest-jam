@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Harvest JAM 2.0 · Explicación del Proyecto (ETL + DSS)</title>
+  <style>
+    :root {
+      --bg: #f6f5f0;
+      --surface: #ffffff;
+      --surface-soft: #faf9f5;
+      --surface-tint: #f0f3f8;
+      --ink: #1b2b4b;
+      --ink-2: #3b4b68;
+      --ink-3: #64748b;
+      --accent: #c21d5a;
+      --accent-soft: #fde8ef;
+      --gold: #ffcf4d;
+      --gold-soft: #fff8de;
+      --teal: #0f766e;
+      --teal-soft: #e6f7f5;
+      --blue: #1d4ed8;
+      --blue-soft: #eaf1ff;
+      --danger: #b91c1c;
+      --danger-soft: #feecec;
+      --border: #e2e5ec;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 8px 24px rgba(27, 43, 75, 0.06);
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.62;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Barra superior fija */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(27, 43, 75, 0.96);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      border-bottom: 3px solid var(--gold);
+    }
+
+    .topbar__inner {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand__badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--accent), #e11d74);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: 0.5px;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(194, 29, 90, 0.35);
+      flex-shrink: 0;
+    }
+
+    .brand__title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    .brand__sub {
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      margin: 2px 0 0;
+    }
+
+    /* Selector principal de las 2 vistas */
+    .view-switch {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 4px;
+      border-radius: 12px;
+      gap: 4px;
+    }
+
+    .view-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 9px 16px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .view-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .view-btn[aria-selected="true"] {
+      background: var(--gold);
+      color: var(--ink);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+    }
+
+    .actions-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-outline {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: transparent;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    /* Contenedor */
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+
+    /* Hero de cada vista */
+    .hero {
+      background: linear-gradient(135deg, #1b2b4b 0%, #263d69 65%, #34244d 100%);
+      color: #fff;
+      border-radius: 20px;
+      padding: 32px 32px 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero--tech {
+      background: linear-gradient(135deg, #132038 0%, #1c3556 60%, #164e63 100%);
+    }
+
+    .hero__kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(255, 207, 77, 0.18);
+      color: var(--gold);
+      border: 1px solid rgba(255, 207, 77, 0.4);
+      padding: 5px 12px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.55rem, 3vw, 2.15rem);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 78ch;
+      color: #dbe4f3;
+      font-size: 1rem;
+    }
+
+    /* Índice rápido dentro de la vista */
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .toc a {
+      text-decoration: none;
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .toc a:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    /* Tarjetas de sección */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 26px 28px;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow);
+      scroll-margin-top: 90px;
+    }
+
+    .section__head {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .section__num {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 0.95rem;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .section__num--tech {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .section h2 {
+      margin: 0;
+      font-size: 1.35rem;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+    }
+
+    .section__subtitle {
+      margin: 4px 0 0;
+      color: var(--ink-3);
+      font-size: 0.92rem;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin: 22px 0 10px;
+      color: var(--ink);
+    }
+
+    p { margin: 0 0 12px; color: var(--ink-2); }
+    p:last-child { margin-bottom: 0; }
+
+    /* Cuadro "Cómo decirlo en la exposición" */
+    .speech-box {
+      background: var(--gold-soft);
+      border-left: 4px solid #d99b00;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 16px 18px;
+      margin: 16px 0;
+    }
+
+    .speech-box__label {
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8a6200;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .speech-box p {
+      color: #3f3107;
+      font-style: italic;
+      margin: 0;
+    }
+
+    /* Callouts */
+    .callout {
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin: 14px 0;
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+    }
+
+    .callout--ok {
+      background: var(--teal-soft);
+      border-color: #b2e2dc;
+      color: #0f4c45;
+    }
+
+    .callout--ok strong { color: #0b3b36; }
+
+    .callout--accent {
+      background: var(--accent-soft);
+      border-color: #f7bdd1;
+      color: #701235;
+    }
+
+    .callout--blue {
+      background: var(--blue-soft);
+      border-color: #c5d9ff;
+      color: #173377;
+    }
+
+    /* Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 16px;
+      margin: 16px 0;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin: 16px 0;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .card {
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+    }
+
+    .card--problem {
+      border-top: 3px solid var(--danger);
+      background: #fffafa;
+    }
+
+    .card--solution {
+      border-top: 3px solid var(--teal);
+      background: #f8fdfc;
+    }
+
+    .card--file {
+      background: #fff;
+      border-left: 4px solid var(--ink);
+    }
+
+    .card--file-etl { border-left-color: var(--accent); }
+    .card--file-dss { border-left-color: var(--teal); }
+    .card--file-db { border-left-color: var(--blue); }
+    .card--file-ui { border-left-color: #d97706; }
+
+    .card__title {
+      font-weight: 700;
+      font-size: 0.98rem;
+      margin: 0 0 6px;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .card p { font-size: 0.92rem; }
+
+    /* KPIs */
+    .kpi {
+      background: var(--surface-tint);
+      border: 1px solid #d9e1ef;
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+    }
+
+    .kpi__val {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.15;
+    }
+
+    .kpi__label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--ink-3);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 4px;
+    }
+
+    .kpi__note {
+      font-size: 0.82rem;
+      color: var(--ink-2);
+      margin-top: 4px;
+    }
+
+    /* Badges y código inline */
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .tag--accent { background: var(--accent-soft); color: var(--accent); }
+    .tag--teal { background: var(--teal-soft); color: var(--teal); }
+    .tag--blue { background: var(--blue-soft); color: var(--blue); }
+    .tag--gold { background: var(--gold-soft); color: #8a6200; }
+    .tag--danger { background: var(--danger-soft); color: var(--danger); }
+    .tag--neutral { background: #eef1f6; color: var(--ink-2); }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.84em;
+      background: #eef1f6;
+      color: #162442;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    pre {
+      background: #131c2e;
+      color: #e2e8f0;
+      padding: 16px 18px;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.83rem;
+      line-height: 1.55;
+      margin: 12px 0;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+    }
+
+    /* Diagrama de flujo visual */
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .flow__step {
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 15px 14px;
+      position: relative;
+    }
+
+    .flow__step-num {
+      font-size: 0.74rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .flow__step h4 {
+      margin: 0 0 6px;
+      font-size: 0.96rem;
+      color: var(--ink);
+    }
+
+    .flow__step p {
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    /* Tablas */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 14px 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      background: #fff;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--surface-tint);
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    tr:hover td { background: #fbfcfe; }
+
+    /* Comparador Antes / Después */
+    .compare {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin: 16px 0;
+    }
+
+    .compare__col {
+      border-radius: var(--radius-sm);
+      padding: 18px;
+      border: 1px solid var(--border);
+    }
+
+    .compare__col--before {
+      background: #fff8f8;
+      border-color: #f5cccc;
+    }
+
+    .compare__col--after {
+      background: #f4fbf9;
+      border-color: #b7e4dc;
+    }
+
+    .compare__col h3 {
+      margin-top: 0;
+      font-size: 1rem;
+    }
+
+    ul.clean {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      color: var(--ink-2);
+    }
+
+    ul.clean li { margin-bottom: 7px; }
+    ul.clean li:last-child { margin-bottom: 0; }
+
+    /* Acordeón de preguntas de defensa */
+    details.qa {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-soft);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    details.qa[open] {
+      background: #fff;
+      border-color: #c5d4ec;
+      box-shadow: 0 4px 12px rgba(27, 43, 75, 0.05);
+    }
+
+    details.qa summary {
+      cursor: pointer;
+      padding: 14px 16px;
+      font-weight: 700;
+      color: var(--ink);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    details.qa summary::-webkit-details-marker { display: none; }
+
+    details.qa summary::after {
+      content: "+";
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    details.qa[open] summary::after {
+      content: "−";
+    }
+
+    .qa__body {
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      font-size: 0.92rem;
+    }
+
+    /* Barras de pesos del DSS */
+    .weights {
+      display: grid;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .weight-row {
+      display: grid;
+      grid-template-columns: 185px 1fr 56px;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.9rem;
+    }
+
+    .weight-track {
+      height: 11px;
+      background: #e7ecf4;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .weight-bar {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--ink), var(--accent));
+    }
+
+    /* Vistas ocultables */
+    .view-panel[hidden] { display: none; }
+
+    footer {
+      text-align: center;
+      color: var(--ink-3);
+      font-size: 0.84rem;
+      margin-top: 32px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 680px) {
+      .section { padding: 20px 18px; }
+      .hero { padding: 24px 20px; }
+      .weight-row { grid-template-columns: 1fr 50px; }
+      .weight-track { grid-column: 1 / -1; order: 3; }
+    }
+
+    @media print {
+      .topbar, .toc, .actions-top { display: none !important; }
+      body { background: #fff; }
+      .section, .hero { box-shadow: none; break-inside: avoid; }
+      .view-panel[hidden] { display: block !important; page-break-before: always; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">
+        <div class="brand__badge">HJ</div>
+        <div>
+          <p class="brand__title">Harvest JAM 2.0 · Guía del Proyecto</p>
+          <p class="brand__sub">Explicación clara para exponer + respaldo técnico y configuración</p>
+        </div>
+      </div>
+
+      <nav class="view-switch" role="tablist" aria-label="Cambiar nivel de explicación">
+        <button
+          id="tab-simple"
+          class="view-btn"
+          role="tab"
+          aria-selected="true"
+          aria-controls="vista-simple"
+          type="button"
+        >
+          🗣️ Explicación No Técnica
+        </button>
+        <button
+          id="tab-tecnica"
+          class="view-btn"
+          role="tab"
+          aria-selected="false"
+          aria-controls="vista-tecnica"
+          type="button"
+        >
+          ⚙️ Vista Técnica y Configuración
+        </button>
+      </nav>
+
+      <div class="actions-top">
+        <button class="btn-outline" type="button" onclick="window.print()">🖨️ Imprimir / PDF</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ==================================================================
+         VISTA 1: EXPLICACIÓN NO TÉCNICA (GUÍA PARA EXPONER EL PROYECTO)
+         ================================================================== -->
+    <section id="vista-simple" class="view-panel" role="tabpanel" aria-labelledby="tab-simple">
+      <div class="hero">
+        <span class="hero__kicker">Vista 1 · Lenguaje claro para explicar y exponer</span>
+        <h1>¿De qué trata Harvest JAM 2.0 y qué mejoras implementamos?</h1>
+        <p>
+          Esta vista está pensada para explicar el proyecto de principio a fin sin enredarse en tecnicismos:
+          qué hace el sistema, qué problemas reales encontramos en la frutería, por qué agregamos un proceso
+          <strong>ETL</strong> y un módulo de <strong>Decisiones (DSS)</strong>, cómo comprobamos que funciona
+          y de qué trata cada archivo que sumamos al código.
+        </p>
+        <div class="toc">
+          <a href="#s-que-es">1. De qué trata</a>
+          <a href="#s-problemas">2. Problemas detectados</a>
+          <a href="#s-por-que-etl">3. Por qué un ETL</a>
+          <a href="#s-como-lo-hicimos">4. Cómo lo implementamos</a>
+          <a href="#s-comprobacion">5. Cómo lo comprobamos y mejora</a>
+          <a href="#s-archivos">6. Archivos agregados</a>
+          <a href="#s-alcance">7. Preexistente vs. Nuevo</a>
+          <a href="#s-demo">8. Guion de demostración (7 pasos)</a>
+          <a href="#s-conclusiones">9. Limitaciones y conclusiones</a>
+        </div>
+      </div>
+
+      <!-- 1. DE QUÉ TRATA -->
+      <article id="s-que-es" class="section">
+        <div class="section__head">
+          <div class="section__num">1</div>
+          <div>
+            <h2>De qué trata el proyecto</h2>
+            <p class="section__subtitle">La idea central en pocas palabras</p>
+          </div>
+        </div>
+
+        <p>
+          <strong>Harvest JAM 2.0</strong> es un sistema web completo para administrar una <strong>frutería</strong>.
+          Originalmente nació como un programa de escritorio en Java, y en su versión 2 se convirtió en una aplicación
+          web que funciona desde cualquier computadora, tableta o celular sin instalar nada en las cajas.
+        </p>
+        <p>
+          El sistema ya cubría toda la operación diaria del negocio: cobrar en el punto de venta (con ticket e incluso
+          envío por WhatsApp), registrar compras a proveedores, llevar el inventario en automático, administrar
+          productos, clientes, proveedores y empleados, ver reportes y auditar quién hizo cada cambio.
+        </p>
+
+        <div class="speech-box">
+          <span class="speech-box__label">💬 Cómo puedes empezarlo a explicar en tu presentación</span>
+          <p>
+            “Nuestro proyecto es Harvest JAM 2.0, un sistema web de punto de venta e inventario para una frutería.
+            El sistema ya registraba ventas, compras y existencias, pero nos dimos cuenta de que tener datos guardados
+            no basta para decidir bien qué comprar cada semana en un negocio de productos perecederos. Por eso
+            implementamos dos piezas clave: un proceso <strong>ETL</strong> para limpiar y ordenar los datos, y un
+            módulo de <strong>Apoyo a Decisiones (DSS)</strong> que recomienda qué frutas y verduras comprar, en qué
+            cantidad y con qué prioridad.”
+          </p>
+        </div>
+
+        <div class="grid-4">
+          <div class="kpi">
+            <div class="kpi__val">POS + Inventario</div>
+            <div class="kpi__label">Base del sistema</div>
+            <div class="kpi__note">Ventas, compras, catálogos, reportes y auditoría por roles.</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__val">Motor ETL</div>
+            <div class="kpi__label">Limpieza y control</div>
+            <div class="kpi__note">Limpia datos sucios, aparta errores a cuarentena y deja bitácora.</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__val">Módulo DSS</div>
+            <div class="kpi__label">Apoyo a decisiones</div>
+            <div class="kpi__note">Calcula urgencia, evita merma y simula presupuesto y demanda.</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__val">Revisión humana</div>
+            <div class="kpi__label">Principio clave</div>
+            <div class="kpi__note">Recomienda y explica el “¿por qué?”, pero nunca compra solo.</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2. PROBLEMAS DETECTADOS -->
+      <article id="s-problemas" class="section">
+        <div class="section__head">
+          <div class="section__num">2</div>
+          <div>
+            <h2>Los problemas reales que detectamos</h2>
+            <p class="section__subtitle">Qué estaba fallando o faltando en la frutería antes de esta mejora</p>
+          </div>
+        </div>
+
+        <p>
+          Al analizar el funcionamiento del sistema original, detectamos cuatro problemas muy concretos que afectan
+          directamente el dinero y la operación diaria de una frutería:
+        </p>
+
+        <div class="grid-2">
+          <div class="card card--problem">
+            <div class="card__title">
+              <span>1. Alertas “parejas” que engañan</span>
+              <span class="tag tag--danger">Desabasto / Merma</span>
+            </div>
+            <p>
+              El sistema anterior solo avisaba cuando quedaban <strong>10 unidades o menos</strong> de cualquier producto.
+              Pero en una frutería no es igual tener 10 kg de tomate (que se venden en 2 días) que 10 kg de un producto
+              lento (que dura semanas). Comprar de menos hace perder ventas; comprar de más hace que la fruta se eche a perder.
+            </p>
+          </div>
+
+          <div class="card card--problem">
+            <div class="card__title">
+              <span>2. Datos externos desordenados y con errores</span>
+              <span class="tag tag--danger">Calidad de datos</span>
+            </div>
+            <p>
+              La caja sabe cuánto vendió, pero no sabe cuántos días tarda cada proveedor en surtir ni cuántos días dura
+              fresca una fruta. Esa información viene de hojas externas (archivos CSV) que traen errores humanos típicos:
+              espacios de más, abreviaturas mezcladas (<code>kg</code>, <code>pza</code>), decimales con coma (<code>12,5</code>),
+              fechas en distinto formato, filas duplicadas, tiempos de entrega vacíos o datos imposibles (cantidades negativas).
+            </p>
+          </div>
+
+          <div class="card card--problem">
+            <div class="card__title">
+              <span>3. Riesgo de dañar los datos reales de la caja</span>
+              <span class="tag tag--danger">Seguridad operativa</span>
+            </div>
+            <p>
+              Si hacíamos pruebas o limpiezas directamente sobre las tablas del punto de venta, cualquier error podía
+              alterar el inventario real o los tickets cobrados. Necesitábamos una zona completamente separada.
+            </p>
+          </div>
+
+          <div class="card card--problem">
+            <div class="card__title">
+              <span>4. Compras “al tanteo” y sin ver escenarios</span>
+              <span class="tag tag--danger">Falta de soporte</span>
+            </div>
+            <p>
+              El comprador y el gerente no tenían una herramienta para responder rápido:
+              <em>“Si esta semana tengo solo $15,000, ¿qué compro primero? ¿Qué pasa si sube la venta un 20 % o si mi proveedor se tarda 2 días más?”</em>
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 3. POR QUÉ IMPLEMENTAMOS UN ETL -->
+      <article id="s-por-que-etl" class="section">
+        <div class="section__head">
+          <div class="section__num">3</div>
+          <div>
+            <h2>¿Por qué empezamos implementando un ETL?</h2>
+            <p class="section__subtitle">Si los datos entran mal, las recomendaciones saldrán mal</p>
+          </div>
+        </div>
+
+        <p>
+          Un <strong>ETL</strong> significa <strong>Extraer, Transformar y Cargar</strong>. En palabras simples, es
+          como un <strong>filtro de control de calidad automático</strong> que revisa toda la información antes de
+          usarla para tomar decisiones.
+        </p>
+        <p>
+          Decidimos implementar primero el ETL porque de nada servía crear fórmulas bonitas de compra si los datos
+          venían con nombres mal escritos, códigos repetidos, precios en cero o fechas inventadas. Además, establecimos
+          una <strong>Regla de Oro</strong>:
+        </p>
+
+        <div class="callout callout--accent">
+          <strong>Regla de Oro del ETL:</strong> el proceso solo <strong>lee</strong> los datos del punto de venta y
+          los archivos externos, y guarda el resultado limpio en un área aparte (el esquema <code>etl</code>).
+          <strong>Jamás modifica ni borra una sola venta o producto de la caja real.</strong>
+        </div>
+
+        <div class="flow">
+          <div class="flow__step">
+            <div class="flow__step-num">Paso 1 · Extraer</div>
+            <h4>Leer sin tocar</h4>
+            <p>Toma productos y ventas reales del sistema y lee las 2 hojas externas de tiempos de entrega y vida útil.</p>
+          </div>
+          <div class="flow__step">
+            <div class="flow__step-num">Paso 2 · Limpiar</div>
+            <h4>Arreglar formato</h4>
+            <p>Quita espacios, corrige mayúsculas, cambia <code>kg</code> a <code>kilogramo</code>, comas a puntos, unifica fechas y quita duplicados.</p>
+          </div>
+          <div class="flow__step">
+            <div class="flow__step-num">Paso 3 · Validar</div>
+            <h4>Frenar datos rotos</h4>
+            <p>Si falta el tiempo de entrega usa un estándar (2 días) avisando. Si un dato es imposible (cantidad negativa, fecha 2099), lo manda a <strong>Cuarentena</strong>.</p>
+          </div>
+          <div class="flow__step">
+            <div class="flow__step-num">Paso 4 · Cargar</div>
+            <h4>Dejar listo y auditable</h4>
+            <p>Guarda las tablas limpias desde cero (sin duplicar nunca) y anota cada cambio <em>Antes → Después</em> en la Bitácora ETL.</p>
+          </div>
+        </div>
+
+        <div class="speech-box">
+          <span class="speech-box__label">💬 Cómo explicar el ETL en 20 segundos</span>
+          <p>
+            “Para empezar implementamos un ETL porque los datos del negocio se combinan con archivos externos que traen
+            errores de captura. Nuestro ETL separa lo bueno de lo malo: corrige detalles de formato, rellena faltantes
+            avisando al usuario, manda a cuarentena los datos imposibles para que no arruinen los cálculos, y deja una
+            bitácora donde se ve exactamente qué había antes y cómo quedó después.”
+          </p>
+        </div>
+
+        <details class="qa">
+          <summary>¿Y si el profesor pregunta: “¿Cómo estás seguro de que lo que rellena y descarta es correcto? ¿Qué tal si se equivoca?”</summary>
+          <div class="qa__body">
+            <p>
+              <strong>Respuesta directa para decir en voz alta:</strong>
+              <em>“Precisamente porque ningún proceso automático es infalible, diseñamos el ETL con cuatro candados:
+              (1) <strong>Solo descarta cosas objetivamente imposibles</strong> (cantidades negativas, precios en cero, fechas del año 2099 o códigos que no existen), nunca por corazonada;
+              (2) <strong>Solo rellena un dato específico</strong> (el tiempo de entrega vacío con el estándar de 2 días), jamás inventa ventas, precios ni stock, y además lo marca visiblemente en pantalla (<code>Entrega imputada</code>) para que el comprador lo revise;
+              (3) <strong>Nunca borra el dato original</strong>: todo lo rechazado queda completo en Cuarentena y cada cambio en la bitácora <em>Antes → Después</em>, así que si un criterio fuera muy estricto se ajusta y se vuelve a correr sin perder nada;
+              (4) <strong>Lo verificamos con pruebas automatizadas</strong> y la decisión final siempre la aprueba una persona.”</em>
+            </p>
+          </div>
+        </details>
+      </article>
+
+      <!-- 4. CÓMO LO IMPLEMENTAMOS -->
+      <article id="s-como-lo-hicimos" class="section">
+        <div class="section__head">
+          <div class="section__num">4</div>
+          <div>
+            <h2>Cómo lo implementamos (de los datos limpios a la decisión)</h2>
+            <p class="section__subtitle">Las dos pantallas nuevas y cómo trabajan juntas</p>
+          </div>
+        </div>
+
+        <p>
+          Construimos la solución en dos módulos conectados dentro de la misma aplicación web, respetando los permisos
+          de cada puesto (el cajero no ve estas pantallas; el administrador controla el ETL; el comprador y el gerente
+          usan las decisiones):
+        </p>
+
+        <div class="grid-2">
+          <div class="card card--solution">
+            <div class="card__title">
+              <span>A. Pantalla “Bitácora ETL” (<code>/etl</code>)</span>
+              <span class="tag tag--accent">Control y transparencia</span>
+            </div>
+            <ul class="clean">
+              <li>Tiene un botón <strong>“Ejecutar ETL”</strong> para actualizar todos los datos reales del negocio.</li>
+              <li>Tiene un botón <strong>“Probar datos inválidos”</strong> que corre un paquete de prueba con errores creados a propósito para demostrar en vivo cómo limpia y manda a cuarentena <strong>sin ensuciar los datos reales</strong>.</li>
+              <li>Muestra 4 tarjetas resumen: cuántos datos se leyeron, cuántos se limpiaron/imputaron, cuántos se cargaron y cuántos se fueron a cuarentena.</li>
+              <li>Tiene una tabla estilo Auditoría con filtros y el comparativo exacto <strong>Antes → Después</strong>; al dar clic en una fila se ve el detalle completo.</li>
+            </ul>
+          </div>
+
+          <div class="card card--solution">
+            <div class="card__title">
+              <span>B. Pantalla “Decisiones” (<code>/decisiones</code>)</span>
+              <span class="tag tag--teal">Inteligencia de compra</span>
+            </div>
+            <ul class="clean">
+              <li>Usa solo los datos ya limpiados por el ETL para calcular <strong>5 indicadores reales</strong>: cuántos días alcanza el stock (cobertura), rotación, diferencia contra el mínimo, si el proveedor llega a tiempo y si hay riesgo de merma.</li>
+              <li>Clasifica cada producto en: <strong>Emergencia (Crítica)</strong>, <strong>Alta</strong>, <strong>Media</strong>, <strong>Baja</strong>, <strong>Sobreabastecido (No comprar por merma)</strong> o <strong>Sin datos suficientes</strong>.</li>
+              <li>Calcula <strong>cuánto comprar</strong> cuidando nunca pedir más de lo que se alcanza a vender antes de que la fruta se eche a perder.</li>
+              <li>Permite comparar <strong>4 escenarios</strong> (normal, demanda +20 %, demanda −20 %, retraso de proveedor +2 días), poner un <strong>tope de presupuesto</strong>, ver el botón <strong>“¿Por qué?”</strong> en cada producto y <strong>guardar una foto</strong> de la decisión para respaldo.</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>Ejemplo fácil para contar en la presentación</h3>
+        <div class="callout callout--ok">
+          <strong>Caso práctico (Cebolla):</strong> Supongamos que tenemos <strong>12 kg</strong> de cebolla, vendemos
+          <strong>4 kg al día</strong> y el proveedor tarda <strong>5 días</strong> en entregar.
+          Antes, el sistema decía “tienes más de 10 kg, todo bien”.
+          Ahora, nuestro módulo calcula que 12 kg solo alcanzan para <strong>3 días</strong>, pero el proveedor tarda
+          <strong>5 días</strong> (faltan 2 días para que llegue a tiempo). Por eso la marca automáticamente como
+          <strong>Emergencia Crítica</strong> y sugiere exactamente cuánto pedir antes de quedarnos sin producto.
+          Y al revés: si el cilantro alcanza para 18 días pero solo dura fresco 3 días, lo marca como
+          <strong>Sobreabastecido (Riesgo de merma)</strong> y recomienda <strong>no comprar</strong>.
+        </div>
+      </article>
+
+      <!-- 5. CÓMO LO COMPROBAMOS Y MEJORA CONSIDERABLE -->
+      <article id="s-comprobacion" class="section">
+        <div class="section__head">
+          <div class="section__num">5</div>
+          <div>
+            <h2>Cómo lo comprobamos y por qué es una mejora considerable</h2>
+            <p class="section__subtitle">Pruebas reales realizadas y comparación del antes vs. después</p>
+          </div>
+        </div>
+
+        <p>
+          No nos quedamos solo con ver que la pantalla cargara. Comprobamos el funcionamiento de cuatro maneras concretas:
+        </p>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card__title">1. Pruebas automáticas (8 de 8 aprobadas)</div>
+            <p>
+              Escribimos 8 pruebas automatizadas que revisan las reglas del ETL y los cálculos del DSS: validan que se
+              limpien espacios y comas, que se rechacen cantidades negativas y fechas futuras, que no haya errores cuando
+              un producto tiene 0 ventas, que se respete el tope de vida útil y que el presupuesto separe lo que alcanza
+              de lo que queda fuera.
+            </p>
+          </div>
+          <div class="card">
+            <div class="card__title">2. Datos con errores reales integrados</div>
+            <p>
+              En las hojas externas metimos casos reales de error (un producto fantasma <code>9999</code>, una papaya con
+              stock <code>-5</code>, fresa con vida útil <code>0</code>, un proveedor con <code>400</code> días de entrega
+              y una <code>fecha-mala</code>) y verificamos que el ETL limpiara lo rescatable y mandara lo roto a cuarentena.
+            </p>
+          </div>
+          <div class="card">
+            <div class="card__title">3. Modo prueba en vivo sin afectar el negocio</div>
+            <p>
+              Probamos el botón <strong>“Probar datos inválidos”</strong> en la pantalla <code>/etl</code> para confirmar
+              que podemos demostrar el ETL frente a cualquiera sin alterar los números de las ventas ni de las decisiones.
+            </p>
+          </div>
+          <div class="card">
+            <div class="card__title">4. Prueba de repetición (cero duplicados)</div>
+            <p>
+              Ejecutamos el proceso varias veces seguidas y comprobamos que siempre entrega exactamente las mismas cifras
+              y no duplica ningún registro (reproducibilidad total).
+            </p>
+          </div>
+        </div>
+
+        <h3>¿Por qué determinamos que representa una mejora considerable?</h3>
+        <div class="compare">
+          <div class="compare__col compare__col--before">
+            <h3>❌ Antes (Solo sistema de caja)</h3>
+            <ul class="clean">
+              <li>Alerta fija de “10 unidades o menos” sin importar si se vende rápido o lento.</li>
+              <li>No avisaba si un producto se iba a acabar antes de que llegara el proveedor.</li>
+              <li>No advertía riesgo de merma por vida útil de frutas y verduras.</li>
+              <li>Datos externos sin limpieza ni control de errores.</li>
+              <li>Sin manera de simular presupuesto semanal ni aumentos de demanda.</li>
+              <li>Decisiones de compra basadas solo en memoria o intuición.</li>
+            </ul>
+          </div>
+          <div class="compare__col compare__col--after">
+            <h3>✅ Después (Con ETL + Módulo DSS)</h3>
+            <ul class="clean">
+              <li>Prioridades inteligentes basadas en <strong>días reales de cobertura</strong> y plazo de entrega.</li>
+              <li>Alerta inmediata de <strong>Emergencia</strong> cuando el stock no aguanta hasta el surtido.</li>
+              <li>Protección contra <strong>merma</strong>: topa la compra sugerida según los días de vida útil.</li>
+              <li>Datos auditados con registro <strong>Antes → Después</strong> y cuarentena de errores.</li>
+              <li>Comparación en un clic de <strong>4 escenarios</strong> + límite de presupuesto semanal.</li>
+              <li>Cada recomendación explica el <strong>“¿Por qué?”</strong> y se guarda como foto histórica.</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 6. MAPA DE ARCHIVOS AGREGADOS -->
+      <article id="s-archivos" class="section">
+        <div class="section__head">
+          <div class="section__num">6</div>
+          <div>
+            <h2>Qué archivos agregamos al código y de qué trata cada uno</h2>
+            <p class="section__subtitle">Explicación sencilla para cuando te pregunten “¿dónde está eso en el código?”</p>
+          </div>
+        </div>
+
+        <p>
+          Para mantener el proyecto ordenado y fácil de entender, dividimos lo nuevo en <strong>5 bloques claros</strong>
+          sin desarmar el sistema que ya existía:
+        </p>
+
+        <h3>1. Base de datos y hojas externas (de dónde salen y dónde se guardan los datos)</h3>
+        <div class="grid-3">
+          <div class="card card--file card--file-db">
+            <div class="card__title"><code>base-de-datos/07_dss.sql</code></div>
+            <p>Crea la zona aparte (<code>etl</code>) con sus 9 tablas para corridas, cambios, cuarentena, resúmenes limpios, parámetros y fotos de decisión, más los permisos por rol.</p>
+          </div>
+          <div class="card card--file card--file-db">
+            <div class="card__title"><code>datos-externos/parametros_producto.csv</code></div>
+            <p>Hoja externa con el stock mínimo y los días de vida útil de cada fruta y verdura (incluye errores y duplicados a propósito para probar la limpieza).</p>
+          </div>
+          <div class="card card--file card--file-db">
+            <div class="card__title"><code>datos-externos/tiempos_entrega_proveedor.csv</code></div>
+            <p>Hoja externa con los días que tarda cada proveedor en surtir cada producto (incluye huecos vacíos para probar el llenado automático y errores para cuarentena).</p>
+          </div>
+        </div>
+
+        <h3>2. El motor de limpieza ETL (en <code>server/src/etl/</code>)</h3>
+        <div class="grid-2">
+          <div class="card card--file card--file-etl">
+            <div class="card__title"><code>server/src/etl/reglas.js</code></div>
+            <p>Es el “manual de reglas” hecho código: sabe leer CSV y contiene todas las reglas de limpieza (espacios, categorías, unidades, duplicados), llenado de faltantes y rechazo a cuarentena.</p>
+          </div>
+          <div class="card card--file card--file-etl">
+            <div class="card__title"><code>server/src/etl/ejecutar.js</code></div>
+            <p>Es el director de orquesta del ETL: abre la corrida, lee los datos reales y los CSV, aplica las reglas de <code>reglas.js</code>, calcula los indicadores y guarda todo en limpio sin duplicar.</p>
+          </div>
+          <div class="card card--file card--file-etl">
+            <div class="card__title"><code>server/src/etl/datosPrueba.js</code></div>
+            <p>Guarda el paquete chiquito de datos sucios e inválidos que se usa cuando presionas el botón “Probar datos inválidos”.</p>
+          </div>
+          <div class="card card--file card--file-etl">
+            <div class="card__title"><code>server/src/etl/cli.js</code></div>
+            <p>Permite correr el ETL directamente desde la terminal con <code>npm run etl</code> o <code>npm run etl:prueba</code> sin abrir el navegador.</p>
+          </div>
+        </div>
+
+        <h3>3. El cerebro de decisiones DSS (en <code>server/src/dss/</code>)</h3>
+        <div class="grid-3">
+          <div class="card card--file card--file-dss">
+            <div class="card__title"><code>server/src/dss/indicadores.js</code></div>
+            <p>Calcula los 5 indicadores de cada producto: días de cobertura, rotación, diferencia contra mínimo, margen de entrega y riesgo de merma.</p>
+          </div>
+          <div class="card card--file card--file-dss">
+            <div class="card__title"><code>server/src/dss/modelo.js</code></div>
+            <p>Asigna la prioridad (Crítica, Alta, Media, Baja, Merma o Sin datos), el puntaje de 0 a 100, la cantidad sugerida con tope de vida útil, el reparto de presupuesto y la explicación en español.</p>
+          </div>
+          <div class="card card--file card--file-dss">
+            <div class="card__title"><code>server/src/dss/escenarios.js</code></div>
+            <p>Ejecuta los 4 escenarios (Base, Demanda +20 %, Demanda −20 %, Proveedor +2 días) y cuenta cuántos productos cambian de prioridad en cada uno.</p>
+          </div>
+        </div>
+
+        <h3>4. Puentes entre el servidor, la base de datos y las pantallas</h3>
+        <div class="grid-2">
+          <div class="card card--file card--file-db">
+            <div class="card__title"><code>server/src/dao/dss.js</code></div>
+            <p>Contiene las consultas a la base de datos para leer corridas, filtrar cambios del ETL, traer los productos limpios y guardar las fotos de decisión.</p>
+          </div>
+          <div class="card card--file card--file-etl">
+            <div class="card__title"><code>server/src/rutas/etl.js</code> y <code>rutas/dss.js</code></div>
+            <p>Son las direcciones web internas (API) que conectan la pantalla con el servidor para consultar cambios, lanzar el ETL, pedir el análisis y guardar corridas DSS.</p>
+          </div>
+          <div class="card card--file">
+            <div class="card__title"><code>server/scripts/init-dss.js</code> (y ajustes en <code>permisos.js</code>, <code>app.js</code>, <code>setup-db.js</code>, <code>package.json</code>)</div>
+            <p><code>init-dss.js</code> instala el módulo nuevo sobre una base que ya existe sin borrar nada. Los demás archivos registran los permisos nuevos, las rutas y los comandos rápidos de npm.</p>
+          </div>
+          <div class="card card--file card--file-dss">
+            <div class="card__title"><code>server/test/etl.test.js</code> y <code>test/dss.test.js</code></div>
+            <p>Son las 8 pruebas automáticas que comprueban que tanto las reglas del ETL como las fórmulas del DSS funcionen exactamente como deben.</p>
+          </div>
+        </div>
+
+        <h3>5. Las pantallas visibles para el usuario (en <code>client/src/</code>)</h3>
+        <div class="grid-2">
+          <div class="card card--file card--file-ui">
+            <div class="card__title"><code>client/src/paginas/BitacoraEtl.jsx</code></div>
+            <p>La pantalla <code>/etl</code>: muestra los botones para correr o probar el ETL, las tarjetas de resumen, los filtros, la tabla <em>Antes → Después</em> y la ventana con el detalle del dato.</p>
+          </div>
+          <div class="card card--file card--file-ui">
+            <div class="card__title"><code>client/src/paginas/Decisiones.jsx</code></div>
+            <p>La pantalla <code>/decisiones</code>: muestra el aviso de revisión humana, KPIs, los 4 escenarios, los controles deslizables, la tabla priorizada, el modal <em>“¿Por qué?”</em> y el historial de fotos.</p>
+          </div>
+          <div class="card card--file card--file-ui">
+            <div class="card__title"><code>App.jsx</code>, <code>Layout.jsx</code> y <code>pantallas.css</code></div>
+            <p>Conectan las dos pantallas nuevas al menú lateral (solo visibles para los roles con permiso) y les dan el mismo diseño visual limpio del resto de Harvest JAM.</p>
+          </div>
+          <div class="card card--file card--file-ui">
+            <div class="card__title"><code>docs/MANUAL_FUNCIONAMIENTO_ETL.md</code></div>
+            <p>Guía corta de apoyo para el equipo con el glosario del ETL, ejemplos y respuestas rápidas.</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 7. FICHA DEL PROYECTO Y SEPARACIÓN PREEXISTENTE VS. NUEVO -->
+      <article id="s-alcance" class="section">
+        <div class="section__head">
+          <div class="section__num">7</div>
+          <div>
+            <h2>Ficha del Proyecto Integrador: qué ya existía vs. qué hicimos nuevo</h2>
+            <p class="section__subtitle">Modalidad A (Integración en proyecto existente) — delimitación clara para la evaluación</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Elemento de la rúbrica</th>
+                <th>Definición exacta en Harvest JAM 2.0</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Modalidad</strong></td>
+                <td><strong>A. Integración en proyecto existente</strong> (módulo ETL + DSS integrado sobre el sistema POS web de la frutería, conservando el mismo stack y la misma base de datos).</td>
+              </tr>
+              <tr>
+                <td><strong>Decisión concreta</strong></td>
+                <td><em>¿Qué productos perecederos conviene reabastecer esta semana, en qué cantidad sugerida, con qué prioridad y bajo qué escenario de demanda o presupuesto?</em></td>
+              </tr>
+              <tr>
+                <td><strong>Usuarios decisores</strong></td>
+                <td><strong>Comprador</strong> (arma pedidos a proveedores), <strong>Gerente</strong> (valida prioridades y presupuesto), <strong>Administrador</strong> (ejecuta y supervisa el ETL) y <strong>Contador</strong> (consulta costos, márgenes y bitácora).</td>
+              </tr>
+              <tr>
+                <td><strong>Frecuencia de decisión</strong></td>
+                <td><strong>Diaria</strong> (al cierre de turno para emergencias de abasto) y <strong>semanal</strong> (para planear el pedido general con presupuesto).</td>
+              </tr>
+              <tr>
+                <td><strong>Alternativas consideradas</strong></td>
+                <td>(1) Reabastecer de emergencia hoy, (2) Incluir en la compra programada de la semana, (3) Monitorear sin comprar todavía, (4) No comprar y promover salida por riesgo de merma, o (5) Ajustar el pedido ante un límite de presupuesto.</td>
+              </tr>
+              <tr>
+                <td><strong>Transparencia de datos</strong></td>
+                <td>Los datos del POS son ficticios de demostración y los archivos CSV en <code>datos-externos/</code> son <strong>datos simulados claramente identificados</strong> en la interfaz y documentación (no se presentan como datos reales).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Separación explícita: sistema preexistente vs. trabajo nuevo de esta materia</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Capa</th>
+                <th>Preexistente en Harvest JAM 2.0</th>
+                <th>Desarrollado nuevo para Toma de Decisiones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Base de datos</strong></td>
+                <td>Esquema operativo <code>fruteria</code> (13 tablas, 18 funciones, 15 triggers de stock y auditoría, roles base).</td>
+                <td>Esquema analítico aislado <code>etl</code> (<code>07_dss.sql</code>) con 9 tablas, 6 índices y permisos específicos por rol.</td>
+              </tr>
+              <tr>
+                <td><strong>Fuentes externas</strong></td>
+                <td>No existían parámetros externos de inventario ni entregas.</td>
+                <td>2 archivos CSV en <code>datos-externos/</code> (<code>parametros_producto.csv</code> y <code>tiempos_entrega_proveedor.csv</code>) con anomalías controladas.</td>
+              </tr>
+              <tr>
+                <td><strong>Servidor (Backend)</strong></td>
+                <td>Rutas CRUD, autenticación, reportes descriptivos y auditoría.</td>
+                <td>Motor ETL (<code>server/src/etl/*</code>), motor DSS (<code>server/src/dss/*</code>), DAO analítico (<code>dao/dss.js</code>), endpoints <code>/api/etl</code> y <code>/api/dss</code>, permisos nuevos y 8 pruebas unitarias.</td>
+              </tr>
+              <tr>
+                <td><strong>Interfaz (Frontend)</strong></td>
+                <td>Punto de venta, ventas, compras, catálogos, reportes y auditoría.</td>
+                <td>Pantalla <strong>Bitácora ETL</strong> (<code>/etl</code>) y pantalla <strong>Decisiones</strong> (<code>/decisiones</code>) con 4 escenarios, presupuesto, modal <em>“¿Por qué?”</em> e historial de fotos.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- 8. GUION DE LA DEMOSTRACIÓN FINAL (7 PASOS + CASO INVÁLIDO) -->
+      <article id="s-demo" class="section">
+        <div class="section__head">
+          <div class="section__num">8</div>
+          <div>
+            <h2>Guion paso a paso para la Demostración Final</h2>
+            <p class="section__subtitle">Los 7 pasos obligatorios de la evaluación + el caso de dato inválido en vivo</p>
+          </div>
+        </div>
+
+        <p>
+          Puedes repartir estos pasos entre los integrantes del equipo (5–6 personas) para demostrar todo el flujo de
+          punta a punta sin olvidar ningún requisito:
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Paso obligatorio</th>
+                <th>Dónde hacer clic en Harvest JAM 2.0</th>
+                <th>Qué explicar en voz alta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Describir la decisión</strong></td>
+                <td>Abrir <code>/decisiones</code> (con <code>francisco_mendoza</code> o <code>ricardo_valencia</code>).</td>
+                <td>Leer el problema: decidir qué perecederos comprar, cuánto y en qué orden. Señalar el banner superior que aclara que el sistema <strong>recomienda con evidencia pero nunca compra solo</strong>.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Mostrar datos de entrada</strong></td>
+                <td>Mostrar <code>/productos</code> y abrir <code>datos-externos/*.csv</code>.</td>
+                <td>Explicar que se combinan ventas/stock del POS con dos hojas externas simuladas (stock mínimo, vida útil y días de entrega) que traen errores reales de captura.</td>
+              </tr>
+              <tr>
+                <td><strong>3. Explicar una transformación del ETL</strong></td>
+                <td>Ir a <code>/etl</code> → pulsar <strong>“Ejecutar ETL”</strong> → filtrar por <em>Limpiados</em> o <em>Imputados</em>.</td>
+                <td>Abrir una fila y mostrar el <strong>Antes → Después</strong> (ej. <code>"  manzana   ROJA "</code> → <code>"Manzana roja"</code>, <code>"12,5"</code> → <code>12.5</code>, o entrega vacía imputada a <code>2 días</code> con regla <code>I1</code>).</td>
+              </tr>
+              <tr>
+                <td><strong>★ Caso de dato inválido (obligatorio)</strong></td>
+                <td>En <code>/etl</code> → pulsar <strong>“Probar datos inválidos”</strong> → filtrar por <em>Rechazados</em>.</td>
+                <td>Abrir el detalle de un rechazo (ej. cantidad <code>-4</code> por <code>V2</code> o fecha <code>2099-05-01</code> por <code>V4</code>). Explicar que fue enviado a <strong>Cuarentena</strong> y jamás contaminó el POS ni los indicadores.</td>
+              </tr>
+              <tr>
+                <td><strong>4. Presentar los indicadores</strong></td>
+                <td>Volver a <code>/decisiones</code> → señalar los 5 KPIs y el panel <em>“Fórmulas de indicadores”</em>.</td>
+                <td>Explicar en sencillo los 5 indicadores: cobertura en días, rotación, brecha contra mínimo, margen de entrega y riesgo de merma.</td>
+              </tr>
+              <tr>
+                <td><strong>5. Ejecutar el modelo</strong></td>
+                <td>Recorrer la tabla <em>“Priorización de compra por producto”</em>.</td>
+                <td>Mostrar cómo agrupa en <strong>Emergencia / Crítica</strong>, <strong>Alta</strong>, <strong>Media</strong>, <strong>Baja</strong>, <strong>Sobreabastecido (Merma)</strong> y <strong>Sin datos</strong>, respetando el tope por vida útil.</td>
+              </tr>
+              <tr>
+                <td><strong>6. Modificar parámetros y comparar escenarios</strong></td>
+                <td>Clic en <strong>“Demanda +20 %”</strong> y <strong>“Proveedor +2 días”</strong> + escribir presupuesto (ej. <code>15000</code>) + <strong>“Guardar foto DSS”</strong>.</td>
+                <td>Mostrar cuántos productos cambian de prioridad, cómo aparecen alertas de <em>Fuera de presupuesto</em> y cómo queda guardada la foto trazable abajo.</td>
+              </tr>
+              <tr>
+                <td><strong>7. Justificar una recomendación con datos</strong></td>
+                <td>Clic en <strong>“¿Por qué?”</strong> en un producto crítico y en uno sobreabastecido.</td>
+                <td>Leer la explicación generada con sus números exactos, fecha de corte y barras del puntaje <code>v1</code> (40/25/20/15 %).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- 9. CONCLUSIONES, LIMITACIONES, SESGOS Y MEJORAS -->
+      <article id="s-conclusiones" class="section">
+        <div class="section__head">
+          <div class="section__num">9</div>
+          <div>
+            <h2>Conclusiones, limitaciones, posibles sesgos y mejoras futuras</h2>
+            <p class="section__subtitle">Qué responder con honestidad al cierre de la presentación</p>
+          </div>
+        </div>
+
+        <div class="callout callout--ok">
+          <strong>Conclusión principal:</strong> Convertir los datos operativos del punto de venta en un proceso
+          <strong>ETL auditable + modelo DSS explicable</strong> transforma a Harvest JAM 2.0 de una caja registradora
+          a una herramienta real de apoyo gerencial: reduce el riesgo de quedarte sin frutas de alta venta, evita
+          comprar de más en productos que se echan a perder rápido y permite defender cada pedido con números claros.
+        </div>
+
+        <div class="grid-2">
+          <div class="card card--problem">
+            <div class="card__title">Limitaciones y posibles sesgos actuales</div>
+            <ul class="clean">
+              <li><strong>Demanda promedio plana (ventana de 28 días):</strong> si hoy llega un día festivo o una onda de calor que dispara la venta de golpe, el promedio tarda en reflejarlo (por eso se incluyó el simulador <code>Demanda +20 %</code>).</li>
+              <li><strong>Datos externos simulados:</strong> los tiempos de entrega, vida útil y stock mínimo vienen de CSV simulados en <code>datos-externos/</code>; en operación real deben mantenerse actualizados por el comprador.</li>
+              <li><strong>Sesgo por imputación (<code>I1</code>):</strong> cuando un proveedor no tiene plazo registrado se asumen 2 días; si en realidad tarda 5, podría subestimar la urgencia (por eso se marca visiblemente <em>“Entrega imputada”</em>).</li>
+              <li><strong>Sin variación estacional ni precios dinámicos:</strong> el modelo usa el último costo de compra y no predice cambios bruscos de precio en central de abastos.</li>
+            </ul>
+          </div>
+
+          <div class="card card--solution">
+            <div class="card__title">Mejoras futuras posibles</div>
+            <ul class="clean">
+              <li><strong>Tiempos de entrega reales automáticos:</strong> calcular el promedio real de entrega a partir de las fechas de pedido vs. recepción en el módulo de Compras.</li>
+              <li><strong>Ajuste de pesos y parámetros desde la interfaz:</strong> permitir al administrador crear versiones <code>v2</code>, <code>v3</code> en <code>etl.dss_parametros</code> desde pantalla.</li>
+              <li><strong>Estacionalidad y días pico:</strong> ponderar más los últimos 7 días o separar demanda de fin de semana vs. entre semana.</li>
+              <li><strong>Generación directa de borrador de orden de compra:</strong> pasar los productos seleccionados de <code>/decisiones</code> al formulario <code>/compras/nueva</code> manteniendo siempre la aprobación humana.</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ==================================================================
+         VISTA 2: EXPLICACIÓN TÉCNICA Y CONFIGURACIÓN
+         ================================================================== -->
+    <section id="vista-tecnica" class="view-panel" role="tabpanel" aria-labelledby="tab-tecnica" hidden>
+      <div class="hero hero--tech">
+        <span class="hero__kicker">Vista 2 · Terminología técnica real + configuración</span>
+        <h1>Arquitectura técnica, configuración y defensa de Harvest JAM 2.0</h1>
+        <p>
+          Explicación técnica clara y directa —sin exagerar la complejidad— usando los términos reales de
+          arquitectura, base de datos, API REST, seguridad, pipelines ETL, modelo DSS y variables de configuración,
+          lista para responder preguntas específicas del profesor o evaluador.
+        </p>
+        <div class="toc">
+          <a href="#t-stack">1. Stack y arquitectura</a>
+          <a href="#t-bd">2. Esquemas SQL y aislamiento</a>
+          <a href="#t-etl">3. Pipeline ETL y reglas</a>
+          <a href="#t-dss">4. Modelo DSS y fórmulas</a>
+          <a href="#t-api-seg">5. API REST y seguridad RBAC</a>
+          <a href="#t-config">6. Configuración y scripts</a>
+          <a href="#t-diccionario">7. Diccionario de datos</a>
+          <a href="#t-ejemplo-manual">8. Ejemplo de cálculo manual</a>
+          <a href="#t-matriz">9. Matriz de pruebas</a>
+          <a href="#t-rubrica">10. Temario y rúbrica (100 %)</a>
+          <a href="#t-qa">11. Posibles preguntas técnicas</a>
+        </div>
+      </div>
+
+      <!-- 1. STACK Y ARQUITECTURA -->
+      <article id="t-stack" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">1</div>
+          <div>
+            <h2>Stack tecnológico y arquitectura cliente-servidor</h2>
+            <p class="section__subtitle">Monorepo minimalista en ESM con npm workspaces</p>
+          </div>
+        </div>
+
+        <p>
+          Harvest JAM 2.0 sigue una arquitectura web desacoplada de <strong>3 capas</strong> dentro de un monorepo
+          con <code>npm workspaces</code> (<code>server</code> y <code>client</code>), usando módulos ES nativos
+          (<code>"type": "module"</code>) y un mínimo deliberado de dependencias (sin ORM ni librerías pesadas):
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Capa</th>
+                <th>Tecnología exacta</th>
+                <th>Responsabilidad en el sistema</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Frontend (SPA)</strong></td>
+                <td>React <code>19.1</code> · Vite <code>7</code> · <code>react-icons</code> (Lucide)</td>
+                <td>Interfaz reactiva con router propio basado en <em>History API</em> (<code>router.jsx</code>), CSS modular con variables y proxy de desarrollo <code>/api → :3001</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>Backend (API REST)</strong></td>
+                <td>Node.js <code>&gt;=20.19</code> · Express <code>5.1</code> · <code>pg</code> (node-postgres) <code>8.13</code></td>
+                <td>Expone endpoints JSON bajo <code>/api/*</code>, gestiona sesiones en memoria, ejecuta el motor ETL y calcula el modelo DSS en funciones puras.</td>
+              </tr>
+              <tr>
+                <td><strong>Persistencia</strong></td>
+                <td>PostgreSQL (base <code>TBD</code>)</td>
+                <td>Esquema OLTP <code>fruteria</code> (13 tablas, 18 funciones, 15 triggers de stock/auditoría) + esquema analítico <code>etl</code> (9 tablas, 6 índices y roles con <code>GRANT</code>).</td>
+              </tr>
+              <tr>
+                <td><strong>Testing</strong></td>
+                <td>Test runner nativo <code>node:test</code> + <code>node:assert/strict</code></td>
+                <td>8 pruebas unitarias puras (<code>server/test/etl.test.js</code> y <code>dss.test.js</code>) ejecutables sin levantar PostgreSQL.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <pre><code>Navegador (React 19 en :5173 en dev / estático desde :3001 en prod)
+   │  Peticiones HTTP a /api/* + Cookie HttpOnly (hj_sesion)
+   ▼
+Servidor Express 5 (Node.js en :3001)
+   ├── Capas operativas: /api/auth, /productos, /ventas, /compras, /reportes, /auditoria
+   ├── Capa ETL:         /api/etl  → server/src/etl/{ejecutar,reglas,datosPrueba}.js
+   ├── Capa DSS:         /api/dss  → server/src/dss/{indicadores,modelo,escenarios}.js
+   └── Conexión DB:      1 pg.Pool por sesión autenticada (credenciales reales del rol PG)
+   ▼
+PostgreSQL (localhost:5432 · BD "TBD")
+   ├── Esquema "fruteria" (OLTP) ──[solo lectura]──▶ Motor ETL
+   └── Esquema "etl" (Analítico + Bitácora + DSS) ◀──[escritura transaccional]── Motor ETL / DSS</code></pre>
+      </article>
+
+      <!-- 2. BASE DE DATOS Y ESQUEMA ETL -->
+      <article id="t-bd" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">2</div>
+          <div>
+            <h2>Modelado de base de datos y aislamiento de esquemas</h2>
+            <p class="section__subtitle">Separación OLTP (<code>fruteria</code>) vs. Analítico (<code>etl</code>) en <code>base-de-datos/07_dss.sql</code></p>
+          </div>
+        </div>
+
+        <p>
+          Todo el módulo nuevo vive aislado en el esquema <code>etl</code> dentro de la misma base <code>TBD</code>.
+          El script <code>07_dss.sql</code> es <strong>idempotente</strong> (usa <code>CREATE SCHEMA/TABLE/INDEX IF NOT EXISTS</code>
+          y <code>ON CONFLICT DO NOTHING</code>), por lo que puede aplicarse sobre una base existente mediante
+          <code>npm run dss:init</code> sin pérdida de datos operativos.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Grupo</th>
+                <th>Tabla en esquema <code>etl</code></th>
+                <th>Propósito técnico y campos clave</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td rowspan="3"><span class="tag tag--accent">Trazabilidad ETL</span></td>
+                <td><code>etl.corridas</code></td>
+                <td>Cabecera por ejecución: <code>modo</code> (<code>completo</code>/<code>prueba</code>), <code>estado</code> (<code>en_curso</code>, <code>ok</code>, <code>con_rechazos</code>, <code>error</code>), <code>duracion_ms</code>, contadores de filas y <code>fecha_corte</code>.</td>
+              </tr>
+              <tr>
+                <td><code>etl.cambios</code></td>
+                <td>Bitácora granular por evento con FK en cascada a <code>corrida_id</code>: <code>entidad</code>, <code>fuente</code>, <code>clave</code>, <code>campo</code>, <code>tipo</code> (<code>LIMPIADO</code>/<code>IMPUTADO</code>/<code>RECHAZADO</code>/<code>CARGADO</code>), <code>regla</code>, <code>valor_antes</code>, <code>valor_despues</code> y payloads <code>jsonb</code>.</td>
+              </tr>
+              <tr>
+                <td><code>etl.rechazos</code></td>
+                <td>Tabla de <strong>cuarentena</strong>: almacena el registro rechazado íntegro en <code>dato_original jsonb</code>, la regla violada (<code>V1</code>–<code>V4</code>) y el motivo legible.</td>
+              </tr>
+              <tr>
+                <td rowspan="3"><span class="tag tag--blue">Capa limpia</span></td>
+                <td><code>etl.parametros_producto</code></td>
+                <td>Parámetros externos depurados por <code>codigo</code>: <code>stock_minimo</code>, <code>vida_util_dias</code>, <code>dias_entrega</code>, bandera <code>entrega_imputada</code> y <code>proveedor_principal</code>.</td>
+              </tr>
+              <tr>
+                <td><code>etl.venta_limpia</code></td>
+                <td>Detalle de ventas validado con PK compuesta <code>(folio_v, codigo)</code>, <code>importe</code> y <code>margen</code> precalculados; insertado en lotes (<code>TAM_LOTE = 250</code>).</td>
+              </tr>
+              <tr>
+                <td><code>etl.resumen_producto</code></td>
+                <td>Tabla analítica desnormalizada (1 fila por producto) consumida por el DSS: variables limpias + los 5 indicadores en ventana móvil de <code>28</code> días + <code>datos_suficientes</code>.</td>
+              </tr>
+              <tr>
+                <td rowspan="3"><span class="tag tag--teal">Trazabilidad DSS</span></td>
+                <td><code>etl.dss_parametros</code></td>
+                <td>Versionado de hiperparámetros del modelo (<code>version = 'v1'</code>): <code>ventana_dias=28</code>, <code>colchon_dias=3</code>, <code>cobertura_objetivo=7</code>, <code>min_dias_ventas=5</code> y los 4 pesos.</td>
+              </tr>
+              <tr>
+                <td><code>etl.dss_corridas</code></td>
+                <td>Snapshots históricos de decisiones guardadas: usuario, escenario, <code>factor_demanda</code>, <code>extra_entrega</code>, <code>presupuesto</code> y totales por prioridad.</td>
+              </tr>
+              <tr>
+                <td><code>etl.dss_recomendaciones</code></td>
+                <td>Detalle por producto de cada foto DSS: <code>prioridad</code>, <code>es_emergencia</code>, <code>puntaje</code>, <code>cantidad_sugerida</code>, <code>costo_estimado</code>, <code>en_presupuesto</code>, <code>explicacion</code> y <code>desglose jsonb</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          <strong>Índices creados (6):</strong> <code>idx_etl_cambios_corrida</code>, <code>idx_etl_cambios_tipo</code>,
+          <code>idx_etl_cambios_entidad</code>, <code>idx_etl_rechazos_corr</code>, <code>idx_etl_venta_fecha</code> y
+          <code>idx_etl_venta_codigo</code> para acelerar los filtros paginados de <code>/etl</code> y consultas por fecha.
+        </p>
+      </article>
+
+      <!-- 3. PIPELINE ETL -->
+      <article id="t-etl" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">3</div>
+          <div>
+            <h2>Pipeline ETL: reglas puras, cuarentena e idempotencia</h2>
+            <p class="section__subtitle">Implementado en <code>server/src/etl/reglas.js</code> y <code>ejecutar.js</code></p>
+          </div>
+        </div>
+
+        <p>
+          Separamos deliberadamente las <strong>reglas de transformación</strong> (funciones puras sin efectos secundarios
+          en <code>reglas.js</code>) del <strong>orquestador de I/O y SQL</strong> (<code>ejecutar.js</code>). Esto
+          permite ejecutar pruebas unitarias rápidas en memoria sin mocks complejos de PostgreSQL.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Tipo de evento</th>
+                <th>Implementación técnica exacta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>L1</code></td>
+                <td><span class="tag tag--blue">LIMPIADO</span></td>
+                <td><code>limpiarTexto()</code> colapsa espacios con regex <code>/\s+/g</code> y normaliza capitalización; <code>normalizarCodigo()</code> elimina espacios y ceros a la izquierda (<code>" 5000"</code>, <code>"05001"</code>).</td>
+              </tr>
+              <tr>
+                <td><code>L2</code></td>
+                <td><span class="tag tag--blue">LIMPIADO</span></td>
+                <td><code>normalizarCategoria()</code> homologa alias (<code>FRUTAS → fruta</code>, vacío → <code>sin_clasificar</code>); <code>normalizarNumero()</code> convierte coma decimal a punto (<code>"12,5" → 12.5</code>); <code>normalizarFecha()</code> convierte <code>DD/MM/YYYY</code> a ISO <code>YYYY-MM-DD</code>.</td>
+              </tr>
+              <tr>
+                <td><code>L3</code></td>
+                <td><span class="tag tag--blue">LIMPIADO</span></td>
+                <td><code>normalizarUnidad()</code> homologa abreviaturas vía diccionario <code>ALIAS_UNIDADES</code> (<code>kg/kilo → kilogramo</code>, <code>pza/pz → pieza</code>, <code>lt → litro</code>, <code>paq → paquete</code>).</td>
+              </tr>
+              <tr>
+                <td><code>L4</code></td>
+                <td><span class="tag tag--blue">LIMPIADO</span></td>
+                <td>Deduplicación determinista con <code>Map</code>: en CSV conserva el registro con <code>fechaActualizacion</code> más reciente; en ventas descarta duplicados por clave compuesta <code>folio_v:codigo</code>.</td>
+              </tr>
+              <tr>
+                <td><code>I1</code></td>
+                <td><span class="tag tag--gold">IMPUTADO</span></td>
+                <td>Si <code>dias_entrega</code> viene vacío en <code>tiempos_entrega_proveedor.csv</code>, imputa <code>entregaPorDefecto = 2</code> días y activa el flag <code>entregaImputada = true</code> para advertirlo en el DSS.</td>
+              </tr>
+              <tr>
+                <td><code>V1</code>–<code>V4</code></td>
+                <td><span class="tag tag--danger">RECHAZADO</span></td>
+                <td><strong>Cuarentena (<code>etl.rechazos</code>):</strong> <code>V1</code> código ausente en <code>fruteria.producto</code>; <code>V2</code> cantidad <code>&lt;= 0</code> o <code>stock_minimo &lt; 0</code>; <code>V3</code> precio <code>&lt;= 0</code>, <code>vida_util_dias</code> fuera de <code>[1..60]</code> o <code>dias_entrega</code> fuera de <code>[0..30]</code>; <code>V4</code> fecha inválida o futura (<code>iso &gt; hoyIso</code>).</td>
+              </tr>
+              <tr>
+                <td><code>LD-01</code></td>
+                <td><span class="tag tag--teal">CARGADO</span></td>
+                <td>Evento de conciliación al completar la carga atómica en <code>etl.venta_limpia</code> y <code>etl.resumen_producto</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--blue">
+          <strong>Estrategia de transaccionalidad e idempotencia:</strong>
+          El registro de <code>etl.corridas</code> se inserta <em>antes</em> de abrir la transacción principal para que,
+          si ocurre una excepción, el bloque <code>catch</code> ejecute <code>ROLLBACK</code> sobre los datos limpios y
+          actualice la corrida a <code>estado = 'error'</code> con <code>detalle_error</code>. En modo <code>completo</code>,
+          la carga ejecuta <code>BEGIN → TRUNCATE TABLE etl.parametros_producto, etl.venta_limpia, etl.resumen_producto → INSERT (por lotes de 250) → COMMIT</code>.
+          En modo <code>prueba</code>, procesa <code>datosPrueba.js</code> y <strong>solo inserta</strong> en
+          <code>etl.corridas</code>, <code>etl.cambios</code> y <code>etl.rechazos</code> sin tocar las tablas limpias.
+        </div>
+      </article>
+
+      <!-- 4. MODELO DSS -->
+      <article id="t-dss" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">4</div>
+          <div>
+            <h2>Modelo analítico del DSS: indicadores, scoring y escenarios</h2>
+            <p class="section__subtitle">Funciones puras en <code>server/src/dss/{indicadores,modelo,escenarios}.js</code></p>
+          </div>
+        </div>
+
+        <h3>Los 5 indicadores trazables (<code>indicadores.js</code>)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Indicador</th>
+                <th>Fórmula implementada</th>
+                <th>Control de borde / significado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Cobertura (días)</strong></td>
+                <td><code>existencia ÷ demanda_diaria</code></td>
+                <td>Si <code>demanda_diaria = 0</code> devuelve <code>null</code> (“Sin demanda”), evitando <code>Infinity</code> o <code>NaN</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Rotación</strong></td>
+                <td><code>(demanda_diaria × ventana_dias) ÷ max(existencia, 1)</code></td>
+                <td>Frecuencia de desplazamiento del inventario en la ventana de análisis (28 días por defecto).</td>
+              </tr>
+              <tr>
+                <td><strong>3. Brecha contra mínimo</strong></td>
+                <td><code>existencia − stock_minimo</code></td>
+                <td>Valor negativo indica stock por debajo del piso de seguridad definido en el CSV externo.</td>
+              </tr>
+              <tr>
+                <td><strong>4. Margen de entrega</strong></td>
+                <td><code>dias_cobertura − (dias_entrega + extra_entrega)</code></td>
+                <td>Valor negativo significa quiebre de stock antes de la llegada del proveedor (detona Emergencia).</td>
+              </tr>
+              <tr>
+                <td><strong>5. Riesgo de merma</strong></td>
+                <td><code>dias_cobertura &gt; vida_util_dias</code> (booleano)</td>
+                <td>Detecta sobreabastecimiento en productos perecederos; bloquea sugerencias de compra.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Pipeline de decisión en 6 pasos (<code>evaluarReabastecimiento()</code> en <code>modelo.js</code>)</h3>
+        <ol class="clean" style="margin-bottom: 16px;">
+          <li><strong>Suficiencia de datos (regla de honestidad):</strong> requiere <code>dias_con_ventas &gt;= 5</code> y <code>demanda_diaria &gt; 0</code>. Si no cumple, clasifica como <code>insuficientes</code> con <code>cantidadSugerida = 0</code>.</li>
+          <li><strong>Regla de emergencia y umbrales:</strong> <code>critica</code> si <code>existencia &lt;= 0</code> o <code>margen_entrega &lt; 0</code>; <code>sobreabastecido</code> si <code>cobertura &gt; vida_util</code>; <code>alta</code> si <code>cobertura &lt;= entrega</code> o <code>existencia &lt; stock_minimo</code>; <code>media</code> si <code>cobertura &lt;= entrega + colchonDias (3)</code>; si no, <code>baja</code>.</li>
+          <li><strong>Scoring ponderado normalizado (0–100, versión <code>v1</code>):</strong> cada componente se normaliza a 0–100 y se pondera según <code>etl.dss_parametros</code>:</li>
+        </ol>
+
+        <div class="weights">
+          <div class="weight-row">
+            <strong>Urgencia de cobertura</strong>
+            <div class="weight-track"><div class="weight-bar" style="width: 40%;"></div></div>
+            <strong>40 %</strong>
+          </div>
+          <div class="weight-row">
+            <strong>Demanda relativa</strong>
+            <div class="weight-track"><div class="weight-bar" style="width: 25%;"></div></div>
+            <strong>25 %</strong>
+          </div>
+          <div class="weight-row">
+            <strong>Margen comercial (%)</strong>
+            <div class="weight-track"><div class="weight-bar" style="width: 20%;"></div></div>
+            <strong>20 %</strong>
+          </div>
+          <div class="weight-row">
+            <strong>Brecha vs. stock mínimo</strong>
+            <div class="weight-track"><div class="weight-bar" style="width: 15%;"></div></div>
+            <strong>15 %</strong>
+          </div>
+        </div>
+
+        <ol class="clean" start="4">
+          <li><strong>Cálculo de cantidad sugerida con tope de merma:</strong> solo aplica a prioridades <code>critica</code>, <code>alta</code> y <code>media</code>:
+            <code>min(demanda × (entrega + coberturaObjetivo) − existencia, demanda × vidaUtil − existencia)</code>, con redondeo comercial (múltiplos de <code>0.5</code> para <code>kilogramo</code>/<code>litro</code> y <code>Math.ceil</code> para piezas/manojos).</li>
+          <li><strong>Orden determinista:</strong> ordena por jerarquía de prioridad → mayor <code>puntaje</code> → desempate por <code>codigo</code> ascendente (mismo insumo = misma salida siempre).</li>
+          <li><strong>Restricción presupuestal y explicabilidad:</strong> asigna costos en orden de prioridad hasta agotar <code>presupuesto</code>, marca los excedentes con <code>enPresupuesto = false</code> y genera una cadena explicativa auditable (<code>construirExplicacion()</code>).</li>
+        </ol>
+
+        <p style="margin-top: 12px;">
+          <strong>Comparador de escenarios (<code>escenarios.js</code>):</strong> evalúa en paralelo los 4 supuestos
+          (<code>base</code>: 1.0x/+0d, <code>demanda_alta</code>: 1.2x/+0d, <code>demanda_baja</code>: 0.8x/+0d,
+          <code>retraso_proveedor</code>: 1.0x/+2d) y calcula el diff exacto de productos que cambian de prioridad
+          respecto al escenario base.
+        </p>
+      </article>
+
+      <!-- 5. API REST Y SEGURIDAD -->
+      <article id="t-api-seg" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">5</div>
+          <div>
+            <h2>Endpoints REST, sesiones y seguridad en doble capa</h2>
+            <p class="section__subtitle">Autenticación delegada a PostgreSQL + RBAC en aplicación y base de datos</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card__title">Endpoints nuevos del módulo ETL y DSS</div>
+            <ul class="clean">
+              <li><code>GET /api/etl/corridas</code> — Lista las últimas 25 corridas (<code>VER_ETL</code>).</li>
+              <li><code>GET /api/etl/cambios</code> — Bitácora paginada (40/pág) con filtros <code>corridaId</code>, <code>entidad</code>, <code>tipo</code>, <code>buscar</code> y conteos con <code>COUNT(*) FILTER</code> (<code>VER_ETL</code>).</li>
+              <li><code>POST /api/etl/ejecutar</code> — Ejecuta el motor ETL en <code>modo: "completo" | "prueba"</code> usando el pool de sesión (<code>EJECUTAR_ETL</code>).</li>
+              <li><code>GET /api/dss/analisis</code> — Evalúa prioridades, 4 escenarios y devuelve fórmulas + corridas guardadas. Acepta query params acotados (<code>factorDemanda</code>, <code>extraEntrega</code>, <code>coberturaObjetivo</code>, <code>presupuesto</code>) (<code>VER_DSS</code>).</li>
+              <li><code>POST /api/dss/guardar-corrida</code> — Persiste un snapshot transaccional en <code>etl.dss_corridas</code> y <code>etl.dss_recomendaciones</code> (<code>EJECUTAR_DSS</code>).</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card__title">Seguridad y autenticación (<code>sesiones.js</code> y <code>db.js</code>)</div>
+            <ul class="clean">
+              <li><strong>Credenciales reales de PostgreSQL:</strong> al iniciar sesión se abre un <code>pg.Pool</code> dedicado (<code>max: 4</code>, <code>search_path=fruteria,public</code>) con el usuario y contraseña de PostgreSQL de esa persona.</li>
+              <li><strong>Cookie segura:</strong> token criptográfico de 32 bytes (<code>crypto.randomBytes(32)</code>) en cookie <code>hj_sesion</code> con <code>HttpOnly; SameSite=Strict</code> (+ <code>Secure</code> en producción) y expiración por inactividad (<code>SESION_HORAS=8</code>).</li>
+              <li><strong>Rate limiting en login:</strong> bloqueo tras <code>5</code> intentos fallidos en una ventana de <code>10 minutos</code> por usuario e IP.</li>
+              <li><strong>Doble capa de permisos (RBAC):</strong> Express valida <code>requiere(PERMISOS.*)</code> en <code>permisos.js</code> y PostgreSQL vuelve a validar con los <code>GRANT/REVOKE</code> del rol en <code>04_roles.sql</code> y <code>07_dss.sql</code>.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rol PostgreSQL</th>
+                <th><code>/etl</code> (Lectura)</th>
+                <th>Ejecutar ETL</th>
+                <th><code>/decisiones</code> (Lectura)</th>
+                <th>Guardar foto DSS</th>
+                <th>Permiso real en BD (<code>07_dss.sql</code>)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>administrador</code></td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td><code>ALL PRIVILEGES</code> en tablas y secuencias de <code>etl</code></td>
+              </tr>
+              <tr>
+                <td><code>gerente</code></td>
+                <td>✅</td>
+                <td>❌</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td><code>SELECT</code> en todo <code>etl</code> + <code>INSERT</code> en <code>dss_corridas</code>/<code>dss_recomendaciones</code></td>
+              </tr>
+              <tr>
+                <td><code>comprador</code></td>
+                <td>❌</td>
+                <td>❌</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td><code>SELECT</code> en todo <code>etl</code> + <code>INSERT</code> en <code>dss_corridas</code>/<code>dss_recomendaciones</code></td>
+              </tr>
+              <tr>
+                <td><code>contador</code></td>
+                <td>✅</td>
+                <td>❌</td>
+                <td>✅</td>
+                <td>❌</td>
+                <td>Solo <code>SELECT</code> en esquema <code>etl</code></td>
+              </tr>
+              <tr>
+                <td><code>cajero</code> / <code>admin_clientes</code></td>
+                <td>❌</td>
+                <td>❌</td>
+                <td>❌</td>
+                <td>❌</td>
+                <td><code>REVOKE ALL</code> (sin acceso ni siquiera a <code>USAGE</code> del esquema)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- 6. CONFIGURACIÓN Y COMANDOS -->
+      <article id="t-config" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">6</div>
+          <div>
+            <h2>Configuración del entorno, puertos y comandos npm</h2>
+            <p class="section__subtitle">Referencia rápida por si preguntan sobre <code>.env</code>, proxy, despliegue o pruebas</p>
+          </div>
+        </div>
+
+        <p>
+          El servidor carga automáticamente el archivo <code>.env</code> de la raíz usando la función nativa
+          <code>process.loadEnvFile()</code> de Node.js (en <code>server/src/config.js</code>), por lo que no requiere
+          la librería <code>dotenv</code>. Si no existe <code>.env</code>, aplica valores por defecto seguros para desarrollo local.
+        </p>
+
+        <div class="grid-2">
+          <div class="table-wrap" style="margin: 0;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Variable (<code>.env</code>)</th>
+                  <th>Valor por defecto</th>
+                  <th>Uso</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><code>PGHOST</code> / <code>PGPORT</code></td><td><code>localhost</code> / <code>5432</code></td><td>Host y puerto del servidor PostgreSQL.</td></tr>
+                <tr><td><code>PGDATABASE</code> / <code>PGSCHEMA</code></td><td><code>TBD</code> / <code>fruteria</code></td><td>Base de datos y <code>search_path</code> operativo.</td></tr>
+                <tr><td><code>PGADMIN_USER</code> / <code>PASSWORD</code></td><td><code>postgres</code> / <code>""</code></td><td>Solo para scripts CLI (<code>db:setup</code>, <code>dss:init</code>, <code>etl</code>).</td></tr>
+                <tr><td><code>PORT</code></td><td><code>3001</code></td><td>Puerto de Express API (y frontend en <code>npm start</code>).</td></tr>
+                <tr><td><code>SESION_HORAS</code></td><td><code>8</code></td><td>TTL de inactividad de la sesión en memoria.</td></tr>
+                <tr><td><code>UMBRAL_STOCK_BAJO</code></td><td><code>10</code></td><td>Umbral clásico del dashboard POS.</td></tr>
+                <tr><td><code>API_URL</code> (Vite)</td><td><code>http://localhost:3001</code></td><td>Destino del proxy <code>/api</code> en <code>client/vite.config.js</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-wrap" style="margin: 0;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Comando (<code>package.json</code>)</th>
+                  <th>Qué ejecuta exactamente</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><code>npm install</code></td><td>Instala dependencias de <code>server</code> y <code>client</code> vía workspaces.</td></tr>
+                <tr><td><code>npm run db:setup</code></td><td>Crea BD <code>TBD</code> y corre <code>01_tablas.sql</code> hasta <code>07_dss.sql</code> (soporta <code>-- --reiniciar</code> y <code>-- --sin-simulados</code>).</td></tr>
+                <tr><td><code>npm run dss:init</code></td><td>Aplica solo <code>07_dss.sql</code> sobre una BD existente y corre la primera carga ETL.</td></tr>
+                <tr><td><code>npm run dev</code></td><td>Arranca <code>node --watch src/index.js</code> (:3001) y <code>vite</code> (:5173) en paralelo vía <code>scripts/dev.js</code>.</td></tr>
+                <tr><td><code>npm run etl</code> / <code>etl:prueba</code></td><td>Ejecuta el motor ETL por CLI en modo <code>completo</code> o <code>prueba</code>.</td></tr>
+                <tr><td><code>npm test</code></td><td>Corre <code>node --test server/test/*.test.js</code> (8 pruebas unitarias: 4 ETL + 4 DSS).</td></tr>
+                <tr><td><code>npm run build</code> + <code>npm start</code></td><td>Compila React en <code>client/dist</code> y Express sirve API + SPA en <code>:3001</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <!-- 7. DICCIONARIO DE DATOS FORMAL -->
+      <article id="t-diccionario" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">7</div>
+          <div>
+            <h2>Diccionario de datos (fuentes operativas, CSV externos y esquema <code>etl</code>)</h2>
+            <p class="section__subtitle">Variables principales usadas en el pipeline ETL y el modelo de decisión (requisito mínimo: 4; implementadas: 14)</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Variable</th>
+                <th>Tipo SQL / JS</th>
+                <th>Fuente y naturaleza</th>
+                <th>Significado</th>
+                <th>Validación / regla aplicada</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>codigo</code></td>
+                <td><code>integer</code></td>
+                <td><code>fruteria.producto</code> (ficticio POS) y CSVs</td>
+                <td>Clave única del producto</td>
+                <td><code>L1</code> quita espacios/ceros; <code>V1</code> exige que exista en catálogo.</td>
+              </tr>
+              <tr>
+                <td><code>descripcion</code></td>
+                <td><code>varchar(100)</code></td>
+                <td><code>fruteria.producto</code> / CSV parámetros</td>
+                <td>Nombre legible del producto</td>
+                <td><code>L1</code> colapsa espacios extra y unifica capitalización.</td>
+              </tr>
+              <tr>
+                <td><code>categoria</code></td>
+                <td><code>varchar(50)</code></td>
+                <td><code>fruteria.producto</code> / CSV parámetros</td>
+                <td>Clasificación (<code>fruta</code>, <code>verdura</code>)</td>
+                <td><code>L2</code> homologa a minúsculas singular; vacío → <code>sin_clasificar</code>.</td>
+              </tr>
+              <tr>
+                <td><code>unidad_medida</code></td>
+                <td><code>varchar(20)</code></td>
+                <td><code>fruteria.producto</code> / CSV parámetros</td>
+                <td>Unidad de venta (<code>kilogramo</code>, <code>pieza</code>, <code>manojo</code>, <code>charola</code>)</td>
+                <td><code>L3</code> homologa alias (<code>kg → kilogramo</code>, <code>pza → pieza</code>).</td>
+              </tr>
+              <tr>
+                <td><code>existencia</code></td>
+                <td><code>numeric(10,3)</code></td>
+                <td><code>fruteria.producto</code> (POS)</td>
+                <td>Stock disponible actual</td>
+                <td>No negativo; si <code>&lt;= 0</code> con demanda activa detona Emergencia.</td>
+              </tr>
+              <tr>
+                <td><code>precio_c</code> / <code>precio_v</code></td>
+                <td><code>numeric(8,2)</code></td>
+                <td><code>fruteria.producto</code> (POS)</td>
+                <td>Costo de compra y precio de venta unitario</td>
+                <td><code>V3</code> exige <code>precio_v &gt; 0</code>; usado para <code>margen_pct</code> y <code>costo_estimado</code>.</td>
+              </tr>
+              <tr>
+                <td><code>cantidad</code> / <code>fecha</code></td>
+                <td><code>numeric(10,3)</code> / <code>timestamp</code></td>
+                <td><code>fruteria.detalle_venta</code> + <code>venta</code> (incluye <code>06_datos_simulados.sql</code>)</td>
+                <td>Unidades vendidas y fecha/hora del ticket</td>
+                <td><code>V2</code> cantidad <code>&gt; 0</code>; <code>V4</code> fecha válida y <code>&lt;= hoy</code>; <code>L4</code> deduplica <code>(folio_v, codigo)</code>.</td>
+              </tr>
+              <tr>
+                <td><code>stock_minimo</code></td>
+                <td><code>numeric(10,3)</code></td>
+                <td><code>datos-externos/parametros_producto.csv</code> (simulado)</td>
+                <td>Piso de seguridad por producto</td>
+                <td><code>L2</code> coma → punto; <code>V2</code> debe ser <code>&gt;= 0</code>; default <code>10</code> si falta.</td>
+              </tr>
+              <tr>
+                <td><code>vida_util_dias</code></td>
+                <td><code>integer</code></td>
+                <td><code>datos-externos/parametros_producto.csv</code> (simulado)</td>
+                <td>Días que el producto perecedero dura vendible</td>
+                <td><code>V3</code> rango entero <code>[1..60]</code>; fuera de rango → cuarentena.</td>
+              </tr>
+              <tr>
+                <td><code>dias_entrega</code></td>
+                <td><code>integer</code></td>
+                <td><code>datos-externos/tiempos_entrega_proveedor.csv</code> (simulado)</td>
+                <td>Plazo en días que tarda el proveedor en surtir</td>
+                <td><code>I1</code> vacío → imputa <code>2</code> (<code>entrega_imputada=true</code>); <code>V3</code> rango <code>[0..30]</code>.</td>
+              </tr>
+              <tr>
+                <td><code>proveedor_principal</code></td>
+                <td><code>varchar(100)</code></td>
+                <td><code>fruteria.producto_proveedor</code> + <code>proveedor</code></td>
+                <td>Proveedor asignado al producto</td>
+                <td><code>L1</code> normaliza texto; si no hay vínculo → <code>Sin proveedor asignado</code>.</td>
+              </tr>
+              <tr>
+                <td><code>demanda_diaria</code> / <code>dias_con_ventas</code></td>
+                <td><code>numeric(10,4)</code> / <code>integer</code></td>
+                <td>Calculado por ETL → <code>etl.resumen_producto</code></td>
+                <td>Promedio diario y días distintos con venta en ventana de 28 días</td>
+                <td>Exige <code>dias_con_ventas &gt;= 5</code> y <code>demanda_diaria &gt; 0</code> para <code>datos_suficientes = true</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- 8. EJEMPLO DE CÁLCULO MANUAL VERIFICADO -->
+      <article id="t-ejemplo-manual" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">8</div>
+          <div>
+            <h2>Ejemplo de cálculo manual paso a paso (verificado contra el código)</h2>
+            <p class="section__subtitle">Caso guía <code>Cebolla (código 5023)</code> — idéntico a la prueba unitaria 1 de <code>server/test/dss.test.js</code></p>
+          </div>
+        </div>
+
+        <p>
+          <strong>Datos de entrada del producto:</strong> Existencia = <code>12 kg</code> · Ventas en ventana de 28 días = <code>112 kg</code> en <code>24</code> días con venta ·
+          Stock mínimo = <code>15 kg</code> · Plazo de entrega = <code>5 días</code> · Vida útil = <code>21 días</code> ·
+          Precio compra = <code>$18.00</code> · Precio venta = <code>$30.00</code> · Parámetros <code>v1</code> (cobertura objetivo <code>7 días</code>, colchón <code>3 días</code>).
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Paso</th>
+                <th>Cálculo manual</th>
+                <th>Resultado obtenido por el sistema</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Demanda diaria</strong></td>
+                <td><code>112 kg ÷ 28 días</code></td>
+                <td><code>4.0000 kg/día</code> · <code>datosSuficientes = true</code> (24 &gt;= 5 días)</td>
+              </tr>
+              <tr>
+                <td><strong>2. Los 5 indicadores</strong></td>
+                <td>
+                  Cobertura: <code>12 ÷ 4 = 3.0 d</code> · Rotación: <code>112 ÷ 12 = 9.333</code> ·
+                  Brecha: <code>12 − 15 = -3 kg</code> · Margen entrega: <code>3.0 − 5 = -2.0 d</code> ·
+                  Merma: <code>3.0 &gt; 21</code> (No) · Margen %: <code>(30−18)÷30 = 40 %</code>
+                </td>
+                <td>Coincidencia exacta: <code>diasCobertura: 3</code>, <code>rotacion: 9.333</code>, <code>brechaMinimo: -3</code>, <code>margenEntrega: -2</code>, <code>riesgoMerma: false</code>, <code>margenPct: 40</code></td>
+              </tr>
+              <tr>
+                <td><strong>3. Clasificación</strong></td>
+                <td>Como <code>margenEntrega (-2.0) &lt; 0</code>, el stock se agota 2 días antes de que llegue el proveedor.</td>
+                <td><code>prioridad: "critica"</code> · <code>esEmergencia: true</code> (<strong>Crítica · Emergencia</strong>)</td>
+              </tr>
+              <tr>
+                <td><strong>4. Puntaje ponderado <code>v1</code></strong></td>
+                <td>
+                  Urgencia <code>100 × 0.40 = 40.0</code> + Demanda <code>100 × 0.25 = 25.0</code> +
+                  Margen <code>100 × 0.20 = 20.0</code> + Brecha <code>((15−12)÷15×100 = 20) × 0.15 = 3.0</code>
+                </td>
+                <td><code>puntaje: 88.00 / 100</code> (en lote multi-producto, demanda y margen se normalizan contra el máximo del catálogo)</td>
+              </tr>
+              <tr>
+                <td><strong>5. Cantidad sugerida y costo</strong></td>
+                <td>
+                  Necesaria: <code>4 × (5 + 7) − 12 = 36 kg</code><br />
+                  Tope merma: <code>4 × 21 − 12 = 72 kg</code><br />
+                  <code>min(36, 72) = 36 kg</code> → <code>36 × $18.00 = $648.00</code>
+                </td>
+                <td><code>cantidadSugerida: 36 kg</code> · <code>limitadaPorVidaUtil: false</code> · <code>costoEstimado: $648.00</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- 9. MATRIZ DE PRUEBAS FORMAL -->
+      <article id="t-matriz" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">9</div>
+          <div>
+            <h2>Matriz de pruebas (automatizadas + funcionales)</h2>
+            <p class="section__subtitle">Ejecutadas con <code>npm test</code> (8/8 aprobadas en ~94 ms) + validación en interfaz y roles</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tipo / Escenario</th>
+                <th>Entrada probada</th>
+                <th>Resultado esperado</th>
+                <th>Resultado obtenido</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>P-01</code></td>
+                <td>ETL · Limpieza <code>L1–L3</code></td>
+                <td><code>" 5000"</code>, <code>"05001"</code>, <code>"  cebolla   BLANCA "</code>, <code>"12,5"</code>, <code>"05/11/2026"</code>, <code>"2099-05-01"</code></td>
+                <td>Normaliza texto, código, decimal y fecha ISO; marca fecha 2099 inválida.</td>
+                <td><span class="tag tag--teal">PASS</span> (<code>etl.test.js</code>)</td>
+              </tr>
+              <tr>
+                <td><code>P-02</code></td>
+                <td>ETL · Deduplicación y cuarentena CSV</td>
+                <td><code>LOTE_PRUEBA_PARAMETROS</code> (5023 duplicado con 2 fechas, 9999 inexistente, 5027 vida útil 0)</td>
+                <td>Conserva 5023 más reciente (min 15); rechaza 9999 (<code>V1</code>) y 5027 (<code>V3</code>); registra <code>L1–L4</code>.</td>
+                <td><span class="tag tag--teal">PASS</span> (<code>etl.test.js</code>)</td>
+              </tr>
+              <tr>
+                <td><code>P-03</code></td>
+                <td>ETL · Datos faltantes (<code>I1</code>) y rangos</td>
+                <td>CSV entregas: 5017 vacío, 5014 con 400 días, 5008 con <code>"fecha-mala"</code></td>
+                <td>Imputa 2 días a 5017 (<code>entregaImputada=true</code>, <code>I1</code>); rechaza 5014 (<code>V3</code>) y 5008 (<code>V4</code>).</td>
+                <td><span class="tag tag--teal">PASS</span> (<code>etl.test.js</code>)</td>
+              </tr>
+              <tr>
+                <td><code>P-04</code></td>
+                <td>ETL · Ventas inválidas y duplicadas</td>
+                <td><code>LOTE_PRUEBA_VENTAS</code> (folio 99001 duplicado, cant <code>-4</code>, precio <code>0</code>, fecha <code>2099</code>)</td>
+                <td>1 venta limpia (importe <code>162.5</code>), 1 deduplicación (<code>L4</code>), 3 rechazos (<code>V2</code>, <code>V3</code>, <code>V4</code>).</td>
+                <td><span class="tag tag--teal">PASS</span> (<code>etl.test.js</code>)</td>
+              </tr>
+              <tr>
+                <td><code>P-05</code></td>
+                <td>DSS · Caso normal / guía</td>
+                <td>Cebolla 5023: 12 kg, 4 kg/día, entrega 5 d, mín 15, vida 21</td>
+                <td>Cobertura 3.0, margen -2, brecha -3, prioridad <code>critica</code>, sugerido 36 kg.</td>
+                <td><span class="tag tag--teal">PASS</span> (<code>dss.test.js</code>)</td>
+              </tr>
+              <tr>
+                <td><code>P-06</code></td>
+                <td>DSS · Casos límite (<code>0</code> ventas / agotado)</td>
+                <td>Arándano 0 ventas; Mango 3 días vendidos; Fresa stock 0 y vida útil 4 d (3 kg/día)</td>
+                <td>Sin <code>Infinity</code> (<code>diasCobertura=null</code>); Mango y Arándano <code>insuficientes</code>; Fresa <code>critica</code> topada a 12 kg.</td>
+                <td><span class="tag tag--teal">PASS</span> (<code>dss.test.js</code>)</td>
+              </tr>
+              <tr>
+                <td><code>P-07</code></td>
+                <td>DSS · Presupuesto y merma</td>
+                <td>Cilantro cobertura 18 d vs vida útil 3 d; Cebolla con presupuesto <code>$100</code></td>
+                <td>Cilantro <code>sobreabastecido</code> (compra 0); Cebolla marcada <code>enPresupuesto=false</code> (<code>fueraPresupuesto=1</code>).</td>
+                <td><span class="tag tag--teal">PASS</span> (<code>dss.test.js</code>)</td>
+              </tr>
+              <tr>
+                <td><code>P-08</code></td>
+                <td>DSS · 4 escenarios y determinismo</td>
+                <td>Ejecutar <code>compararEscenarios()</code> y evaluar 2 veces seguidas el mismo lote</td>
+                <td>Devuelve 4 escenarios exactos y resultados bit-a-bit idénticos en ambas corridas.</td>
+                <td><span class="tag tag--teal">PASS</span> (<code>dss.test.js</code>)</td>
+              </tr>
+              <tr>
+                <td><code>P-09</code></td>
+                <td>Integración · Idempotencia y RBAC</td>
+                <td>Ejecutar ETL 2 veces seguidas; acceder a <code>/etl</code> y <code>/decisiones</code> como <code>cajero</code> vs <code>administrador</code></td>
+                <td>Cero duplicados en <code>etl.resumen_producto</code> y <code>etl.venta_limpia</code>; <code>cajero</code> bloqueado por Express y PostgreSQL.</td>
+                <td><span class="tag tag--blue">Verificable en vivo</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- 10. ALINEACIÓN CON EL TEMARIO Y RÚBRICA -->
+      <article id="t-rubrica" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">10</div>
+          <div>
+            <h2>Cobertura de las 5 Unidades, Rúbrica (100 %) y Condiciones de Aceptación</h2>
+            <p class="section__subtitle">Trazabilidad directa entre el temario de la asignatura y lo construido en Harvest JAM 2.0</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Unidad / Criterio</th>
+                <th>Ponderación</th>
+                <th>Cómo lo cumple Harvest JAM 2.0</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>U1 · Fundamentos DSS</strong><br /><span style="color:var(--ink-3);font-size:0.82rem;">Decisión, usuario y alcance</span></td>
+                <td><strong>15 %</strong></td>
+                <td>Pregunta concreta de reabastecimiento, 4 roles decisores, alternativas definidas y separación estricta entre recomendación y compra humana.</td>
+              </tr>
+              <tr>
+                <td><strong>U2 · Datos y modelado</strong><br /><span style="color:var(--ink-3);font-size:0.82rem;">Variables, fuentes y calidad</span></td>
+                <td><strong>15 %</strong></td>
+                <td>14 variables documentadas, esquema analítico <code>etl</code> con 9 tablas, fuentes simuladas declaradas y reglas de calidad verificables.</td>
+              </tr>
+              <tr>
+                <td><strong>U3 · Procesos ETL</strong><br /><span style="color:var(--ink-3);font-size:0.82rem;">ETL y reproducibilidad</span></td>
+                <td><strong>15 %</strong></td>
+                <td>Extracción de solo lectura, limpieza <code>L1–L4</code>, imputación <code>I1</code>, cuarentena <code>V1–V4</code>, modo <code>prueba</code> y carga atómica idempotente.</td>
+              </tr>
+              <tr>
+                <td><strong>U4–U5 · Modelo de decisión</strong><br /><span style="color:var(--ink-3);font-size:0.82rem;">Modelo y justificación</span></td>
+                <td><strong>20 %</strong></td>
+                <td>Modelo explicable de 6 pasos con pesos <code>v1</code> (40/25/20/15 %), tope de merma, honestidad ante datos insuficientes y cálculo manual verificado.</td>
+              </tr>
+              <tr>
+                <td><strong>U4 · Visualización y análisis</strong><br /><span style="color:var(--ink-3);font-size:0.82rem;">Indicadores y escenarios</span></td>
+                <td><strong>15 %</strong></td>
+                <td>5 indicadores trazables, 4 escenarios comparables, simulación interactiva de demanda/entrega/presupuesto, modal <em>“¿Por qué?”</em> y fotos DSS.</td>
+              </tr>
+              <tr>
+                <td><strong>U5 · Integración y pruebas</strong><br /><span style="color:var(--ink-3);font-size:0.82rem;">Integración funcional y pruebas</span></td>
+                <td><strong>10 %</strong></td>
+                <td>Integración nativa sin duplicar BD ni romper el POS, doble capa RBAC, 8 pruebas unitarias automatizadas (<code>npm test</code>) y matriz de pruebas.</td>
+              </tr>
+              <tr>
+                <td><strong>Documentación y presentación</strong></td>
+                <td><strong>10 %</strong></td>
+                <td>Guía de exposición no técnica + respaldo técnico, manual ETL, guion de 7 pasos + caso inválido, conclusiones y limitaciones honestas.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--ok">
+          <strong>Condiciones de aceptación cumplidas (Sección 16):</strong>
+          (1) Decisión concreta y accionable; (2) Datos simulados identificados explícitamente en UI y docs; (3) Modelo 100 % explicable sin cajas negras innecesarias; (4) Avisa explícitamente cuando hay datos insuficientes (<code>&lt; 5 días</code> con venta); (5) Datos personales ficticios/anonimizados en todas las pruebas y evidencias; (6) Separación clara entre Harvest JAM preexistente y el módulo nuevo.
+        </div>
+      </article>
+
+      <!-- 11. PREGUNTAS FRECUENTES DE DEFENSA -->
+      <article id="t-qa" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">11</div>
+          <div>
+            <h2>Posibles preguntas técnicas en la exposición (y cómo responderlas)</h2>
+            <p class="section__subtitle">Haz clic en cada pregunta para ver una respuesta clara y precisa</p>
+          </div>
+        </div>
+
+        <details class="qa" open>
+          <summary>¿Cómo garantizan que el ETL no duplique datos si se ejecuta varias veces?</summary>
+          <div class="qa__body">
+            El ETL aplica <strong>reconstrucción idempotente dentro de una transacción ACID</strong> (<code>BEGIN ... COMMIT</code>) en <code>server/src/etl/ejecutar.js</code>.
+            Primero vacía las tablas limpias (<code>TRUNCATE TABLE etl.parametros_producto, etl.venta_limpia, etl.resumen_producto</code>) y luego inserta el resultado recién depurado (con <code>Map</code> de deduplicación <code>L4</code> previo).
+            Si ocurre cualquier fallo a mitad de la carga, PostgreSQL ejecuta <code>ROLLBACK</code> y las tablas limpias quedan intactas como en la última corrida exitosa.
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary>¿Cómo se comunican React (puerto 5173) y Express (puerto 3001) sin problemas de CORS?</summary>
+          <div class="qa__body">
+            En desarrollo, <code>client/vite.config.js</code> define un proxy (<code>proxy: { '/api': 'http://localhost:3001' }</code>).
+            Así el navegador siempre hace peticiones al mismo origen (<code>http://localhost:5173/api/...</code>), evitando problemas de CORS y permitiendo enviar la cookie <code>SameSite=Strict</code> sin configuraciones inseguras.
+            En producción (<code>npm run build</code> + <code>npm start</code>), Express sirve los archivos estáticos de <code>client/dist</code> y la API desde el mismo puerto <code>3001</code>.
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary>¿Por qué no usaron un ORM (como Prisma o Sequelize) ni librerías externas de CSV o testing?</summary>
+          <div class="qa__body">
+            Por diseño minimalista y control total sobre PostgreSQL. El proyecto ya tenía funciones almacenadas, triggers de auditoría (que leen <code>set_config('app.usuario', ...)</code>) y permisos por rol de PostgreSQL.
+            Usar <code>pg</code> con consultas parametrizadas (<code>$1, $2...</code>) evita inyección SQL, permite abrir un <code>Pool</code> por usuario autenticado y mantiene solo <strong>2 dependencias en el servidor</strong> (<code>express</code> y <code>pg</code>).
+            El parser CSV (<code>leerCsv</code> en <code>reglas.js</code>) y las pruebas (<code>node:test</code>) se resolvieron con código estándar de Node.js.
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary>¿Dónde se configuran los pesos del modelo DSS y cómo se asegura trazabilidad?</summary>
+          <div class="qa__body">
+            Los pesos (<code>0.40</code> urgencia, <code>0.25</code> demanda, <code>0.20</code> margen, <code>0.15</code> brecha) y umbrales (ventana 28 d, colchón 3 d, cobertura objetivo 7 d, mínimo 5 días con ventas) viven versionados en la tabla <code>etl.dss_parametros</code> (<code>version = 'v1'</code>).
+            Cuando un usuario guarda una decisión (<code>POST /api/dss/guardar-corrida</code>), <code>etl.dss_corridas</code> referencia esa versión exacta y guarda el escenario, el presupuesto y el desglose <code>jsonb</code> de cada producto en <code>etl.dss_recomendaciones</code>.
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary>¿Qué pasa si un producto no tiene ventas o tiene muy pocos días vendidos? ¿El sistema se rompe por división entre cero?</summary>
+          <div class="qa__body">
+            No. En <code>server/src/dss/indicadores.js</code> se protege explícitamente la fórmula: si <code>demandaDiaria &lt;= 0</code>, <code>diasCobertura</code> se asigna como <code>null</code> (nunca <code>Infinity</code> ni <code>NaN</code>).
+            Además, si el producto tiene menos de <code>minDiasVentas</code> (5 días con venta en la ventana de 28 días), el paso 1 de <code>modelo.js</code> activa la <strong>regla de honestidad</strong> y lo marca como <code>insuficientes</code> con <code>cantidadSugerida = 0</code> para no emitir compras sin evidencia estadística.
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary>¿Cómo funciona la auditoría de usuarios en PostgreSQL si la API es un solo servidor Node.js?</summary>
+          <div class="qa__body">
+            Hay dos mecanismos complementarios: primero, cada sesión crea su propio <code>pg.Pool</code> con el rol real de PostgreSQL del empleado que inició sesión (así los <code>GRANT</code> los aplica directamente el motor de BD).
+            Segundo, en transacciones operativas (<code>transaccion()</code> en <code>server/src/db.js</code>), la API ejecuta <code>SELECT set_config('app.usuario', $1, true)</code> antes de las consultas para que los triggers de <code>fruteria</code> guarden el nombre real del empleado.
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary>¿Por qué usaron un modelo de reglas y puntuación ponderada en lugar de Inteligencia Artificial o Machine Learning?</summary>
+          <div class="qa__body">
+            Porque en una frutería con decenas de productos y una ventana de 28–90 días no hay volumen masivo para entrenar modelos complejos sin sobreajuste, y la prioridad del negocio es la <strong>explicabilidad total</strong>:
+            el comprador y el gerente necesitan entender en segundos exactamente por qué se recomienda comprar 36 kg de cebolla y poder ajustar demanda, retrasos o presupuesto en tiempo real. Además, las reglas y pesos versionados (<code>v1</code>) garantizan reproducibilidad determinista.
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary>¿Cuáles son las principales limitaciones o sesgos de su solución actual?</summary>
+          <div class="qa__body">
+            (1) La demanda usa promedio simple de 28 días, por lo que no predice picos bruscos estacionales (se mitiga con el escenario <code>Demanda +20 %</code> y sliders).
+            (2) Los parámetros de vida útil, stock mínimo y plazos de entrega provienen de CSV simulados (<code>datos-externos/</code>), y cuando falta un plazo se imputa con <code>2 días</code> (<code>I1</code>), lo cual se muestra explícitamente como alerta en la interfaz para revisión humana.
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary>¿Cómo garantizan que lo que el ETL rellena o descarta es correcto y qué pasa si se equivoca?</summary>
+          <div class="qa__body">
+            El diseño asume que ningún proceso automático es infalible y controla el riesgo con 5 mecanismos verificables en el código:
+            (1) <strong>Imputación mínima y explícita (<code>I1</code>):</strong> en <code>server/src/etl/reglas.js</code> solo se imputa <code>dias_entrega</code> vacío con <code>2 días</code>; nunca se inventan ventas, cantidades, precios ni fechas.
+            (2) <strong>Descarte solo por reglas de dominio objetivas (<code>V1–V4</code>):</strong> código inexistente, cantidad/precio <code>&lt;= 0</code>, stock negativo, rangos imposibles (vida útil fuera de <code>1..60</code> d o entrega fuera de <code>0..30</code> d) o fecha futura/inválida.
+            (3) <strong>Cero pérdida de datos:</strong> el POS (<code>fruteria.*</code>) y los CSV no se alteran; cada rechazo se guarda íntegro en <code>etl.rechazos</code> (<code>dato_original jsonb</code>) y cada ajuste en <code>etl.cambios</code>.
+            (4) <strong>Visibilidad para el decisor:</strong> cualquier fila imputada activa <code>entrega_imputada = true</code>, mostrando la insignia <em>Entrega imputada (I1)</em> en <code>/decisiones</code> y el control <em>Retraso proveedor (+ días)</em> para sensibilizarla.
+            (5) <strong>Pruebas y regla de honestidad:</strong> las reglas puras se validan en <code>server/test/etl.test.js</code> (<code>npm test</code>), si un producto queda con menos de <code>5</code> días con venta se marca <code>insuficientes</code> y nunca se compra sin aprobación humana.
+          </div>
+        </details>
+      </article>
+    </section>
+
+    <footer>
+      Harvest JAM 2.0 · Documento generado a partir del análisis real del código fuente (<code>base-de-datos/07_dss.sql</code>, <code>server/src/etl/</code>, <code>server/src/dss/</code>, <code>client/src/paginas/</code> y <code>server/test/</code>).
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      const tabs = [
+        { btn: document.getElementById('tab-simple'), panel: document.getElementById('vista-simple'), key: 'simple' },
+        { btn: document.getElementById('tab-tecnica'), panel: document.getElementById('vista-tecnica'), key: 'tecnica' },
+      ];
+
+      function activar(key) {
+        for (const t of tabs) {
+          const activo = t.key === key;
+          t.btn.setAttribute('aria-selected', String(activo));
+          t.panel.hidden = !activo;
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      for (const t of tabs) {
+        t.btn.addEventListener('click', () => activar(t.key));
+      }
+
+      // Permite abrir directamente con #tecnica o #simple
+      if (window.location.hash === '#tecnica') {
+        activar('tecnica');
+      }
+    })();
+  </script>
+</body>
+</html>

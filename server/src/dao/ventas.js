@@ -138,3 +138,18 @@ export async function cancelar(q, folio) {
   const filas = await q('delete from venta where folio_v = $1 returning folio_v', [folio]);
   return filas.length > 0;
 }
+
+// Días del mes que tienen al menos una venta (para marcar el calendario).
+export async function diasConVentas(q, { desde, hasta }) {
+  const filas = await q(
+    `select to_char(fecha::date, 'YYYY-MM-DD') as dia, count(*)::int as ventas
+     from venta
+     where fecha >= $1::date and fecha < $2::date + 1
+     group by fecha::date
+     order by dia`,
+    [desde, hasta],
+  );
+  const dias = {};
+  for (const f of filas) dias[f.dia] = f.ventas;
+  return dias;
+}

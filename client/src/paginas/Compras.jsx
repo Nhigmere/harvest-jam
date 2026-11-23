@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { LuPackagePlus, LuTrash2, LuTruck } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
+import { CalendarioFecha } from '../componentes/CalendarioFecha.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
 import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { PERIODOS, paramsPeriodo, textoPeriodo } from '../componentes/periodo.js';
@@ -10,7 +11,7 @@ import { Tabla } from '../componentes/Tabla.jsx';
 import {
   Boton, Buscador, CabeceraPagina, Cargando, Cifra, MensajeError, Paginacion, Segmentado, Vacio,
 } from '../componentes/ui.jsx';
-import { capitalizar, cantidad, fechaHora, moneda, monedaRedonda, nombrePropio, numero } from '../formato.js';
+import { capitalizar, cantidad, fecha, fechaHora, moneda, monedaRedonda, nombrePropio, numero } from '../formato.js';
 import { useApi, useRetardo } from '../hooks.js';
 import { Link, useNavegar, useUbicacion } from '../router.jsx';
 
@@ -83,18 +84,27 @@ export default function Compras() {
   const navegar = useNavegar();
 
   const [periodo, setPeriodo] = useState('90');
+  const [fechaExacta, setFechaExacta] = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [pagina, setPagina] = useState(1);
   const buscar = useRetardo(busqueda);
   const folioUrl = new URLSearchParams(search).get('folio');
   const [abierta, setAbierta] = useState(folioUrl ? Number(folioUrl) : null);
 
-  useEffect(() => setPagina(1), [periodo, buscar]);
+  useEffect(() => setPagina(1), [periodo, fechaExacta, buscar]);
   useEffect(() => {
     if (folioUrl) setAbierta(Number(folioUrl));
   }, [folioUrl]);
 
-  const { datos, error, cargando, recargar } = useApi('/compras', { ...paramsPeriodo(periodo), buscar, pagina, limite: 25 });
+  const filtroFechas = fechaExacta ? { desde: fechaExacta, hasta: fechaExacta } : paramsPeriodo(periodo);
+  const { datos, error, cargando, recargar } = useApi('/compras', { ...filtroFechas, buscar, pagina, limite: 25 });
+
+  const cambiarPeriodo = (nuevo) => {
+    setFechaExacta('');
+    setPeriodo(nuevo);
+  };
+
+  const etiquetaLapso = fechaExacta ? `del ${fecha(fechaExacta)}` : `de ${textoPeriodo(periodo)}`;
 
   const cerrarDetalle = () => {
     setAbierta(null);
@@ -135,7 +145,16 @@ export default function Compras() {
       />
 
       <div className="filtros">
-        <Segmentado etiqueta="Periodo" opciones={PERIODOS} valor={periodo} alCambiar={setPeriodo} />
+        <Segmentado etiqueta="Periodo" opciones={PERIODOS} valor={fechaExacta ? '' : periodo} alCambiar={cambiarPeriodo} />
+        <CalendarioFecha
+          valor={fechaExacta}
+          alCambiar={setFechaExacta}
+          rutaDias="/compras/dias"
+          etiqueta="Consultar compras por fecha"
+          placeholder="Buscar por fecha"
+          singular="compra"
+          plural="compras"
+        />
         <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar compra" placeholder="Folio, lote, proveedor o empleado" className="filtros__buscador" />
       </div>
 
@@ -143,7 +162,7 @@ export default function Compras() {
 
       {resumen && (
         <div className={`cifras cifras--fila lujo-brillo ${cargando ? 'recargando' : ''}`}>
-          <Cifra principal etiqueta={`Gasto de ${textoPeriodo(periodo)}`} numeroAnimado={resumen.gasto} formato={monedaRedonda} />
+          <Cifra principal etiqueta={`Gasto ${etiquetaLapso}`} numeroAnimado={resumen.gasto} formato={monedaRedonda} />
           <Cifra etiqueta="Compras" numeroAnimado={resumen.compras} formato={numero} />
           <Cifra etiqueta="Promedio por compra" numeroAnimado={resumen.promedio} formato={moneda} />
           <Cifra etiqueta="Proveedores" numeroAnimado={resumen.proveedores} formato={numero} />
@@ -169,8 +188,21 @@ export default function Compras() {
               { clave: 'total', titulo: 'Total', alinear: 'der', render: (c) => <strong className="numeros">{moneda(c.total)}</strong> },
             ]}
             vacio={
-              <Vacio icono={LuTruck} titulo={buscar ? 'Ninguna compra coincide con la búsqueda' : `No hay compras en ${textoPeriodo(periodo)}`}>
-                {buscar ? 'Prueba con el folio, el lote o el nombre del proveedor.' : 'Elige un periodo más amplio para ver compras anteriores.'}
+              <Vacio
+                icono={LuTruck}
+                titulo={
+                  buscar
+                    ? 'Ninguna compra coincide con la búsqueda'
+                    : fechaExacta
+                      ? `No hay compras el ${fecha(fechaExacta)}`
+                      : `No hay compras en ${textoPeriodo(periodo)}`
+                }
+              >
+                {buscar
+                  ? 'Prueba con el folio, el lote o el nombre del proveedor.'
+                  : fechaExacta
+                    ? 'Elige en el calendario un día marcado con punto dorado o quita la fecha para ver otro periodo.'
+                    : 'Elige un periodo más amplio o selecciona una fecha en el calendario.'}
               </Vacio>
             }
           />

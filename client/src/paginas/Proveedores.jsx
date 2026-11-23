@@ -1,11 +1,12 @@
-// Proveedores y lo que surte cada uno: directorio en fichas editoriales, filtros por ciudad e inspector lateral.
-import { useMemo, useState } from 'react';
+// Proveedores y lo que surte cada uno: directorio en fichas editoriales, agenda lateral e inspector.
+import { useEffect, useMemo, useState } from 'react';
 import {
-  LuAward, LuCopy, LuMapPin, LuMessageCircle, LuPackage, LuPencil, LuPhone, LuPlus, LuShoppingBag, LuTrash2, LuTruck,
-  LuUser,
+  LuAward, LuBellPlus, LuCopy, LuMapPin, LuMessageCircle, LuPackage, LuPencil, LuPhone, LuPlus, LuShoppingBag,
+  LuTrash2, LuTruck, LuUser,
 } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
+import { AgendaContactos } from '../componentes/AgendaContactos.jsx';
 import {
   ChipsFiltro, copiarTexto, Drawer, EsqueletoFichas, Monograma, ResumenCatalogo, SwitchVista, tonoDeTexto,
   useVistaCatalogo,
@@ -15,7 +16,7 @@ import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { useFormulario } from '../componentes/formulario.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import {
-  Boton, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Panel, Vacio,
+  Boton, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Paginacion, Panel, Vacio,
 } from '../componentes/ui.jsx';
 import { capitalizar, cantidad, fecha, nombrePropio, numero, plural, telefonoWhatsApp } from '../formato.js';
 import { useApi, useRetardo } from '../hooks.js';
@@ -176,13 +177,17 @@ export default function Proveedores() {
   const { avisar, confirmar } = useDialogos();
   const [busqueda, setBusqueda] = useState('');
   const [ciudad, setCiudad] = useState('todas');
+  const [pagina, setPagina] = useState(1);
   const [vista, setVista] = useVistaCatalogo('proveedores');
   const buscar = useRetardo(busqueda);
   const [detalle, setDetalle] = useState(null);
   const [editando, setEditando] = useState(null);
+  const [paraAgendar, setParaAgendar] = useState(null);
   const { datos, error, cargando, recargar } = useApi('/proveedores', { buscar });
 
   const proveedores = datos?.proveedores ?? [];
+
+  useEffect(() => setPagina(1), [buscar, ciudad, vista]);
 
   const ciudades = useMemo(() => {
     const mapa = new Map();
@@ -199,6 +204,27 @@ export default function Proveedores() {
       ? proveedores
       : proveedores.filter((p) => (p.ciudad || '').trim().toLowerCase() === ciudad)
   ), [proveedores, ciudad]);
+
+  const POR_PAGINA_FICHAS = 8;
+  const paginados = useMemo(() => {
+    const inicio = (pagina - 1) * POR_PAGINA_FICHAS;
+    return visibles.slice(inicio, inicio + POR_PAGINA_FICHAS);
+  }, [visibles, pagina]);
+
+  // Top 5 proveedores clave o con más tiempo sin compra para el panel "A quién marcar"
+  const destacados = useMemo(() => (
+    [...proveedores]
+      .sort((a, b) => Number(b.numProductos || 0) - Number(a.numProductos || 0) || Number(b.numCompras || 0) - Number(a.numCompras || 0))
+      .slice(0, 5)
+      .map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        subtitulo: p.ciudad,
+        telefono: p.telefono,
+        meta: `${capitalizar(p.ciudad) || 'Sin ciudad'} · ${plural(p.numProductos, 'prod.', 'prods.')} · ${p.ultimaCompra ? `últ. ${fecha(p.ultimaCompra)}` : 'sin compras'}`,
+        raw: p,
+      }))
+  ), [proveedores]);
 
   const totalCompras = proveedores.reduce((s, p) => s + Number(p.numCompras || 0), 0);
   const principal = proveedores.reduce((m, p) => (Number(p.numProductos) > Number(m?.numProductos ?? -1) ? p : m), null);
@@ -247,125 +273,156 @@ export default function Proveedores() {
         />
       )}
 
-      <div className="catalogo-controles">
-        <div className="catalogo-barra">
-          <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar proveedor" placeholder="Nombre, ciudad, contacto o teléfono" />
-          <SwitchVista vista={vista} alCambiar={setVista} />
-        </div>
-        {ciudades.length > 1 && (
-          <ChipsFiltro
-            etiqueta="Filtrar por ciudad"
-            valor={ciudad}
-            alCambiar={setCiudad}
-            opciones={[
-              { valor: 'todas', etiqueta: 'Todas las ciudades', conteo: proveedores.length },
-              ...ciudades.map(([c, n]) => ({ valor: c, etiqueta: capitalizar(c), conteo: n, icono: LuMapPin })),
-            ]}
-          />
-        )}
-      </div>
-
-      <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && (vista === 'tarjetas' ? <EsqueletoFichas /> : <EsqueletoTabla />)}
-
-      {datos && vista === 'tarjetas' && (
-        visibles.length ? (
-          <div className={`fichas-grid ${cargando ? 'recargando' : ''}`}>
-            {visibles.map((p) => {
-              const tono = tonoDeTexto(p.ciudad || p.nombre);
-              const esDestacado = Number(p.numProductos) >= 3;
-              return (
-                <article
-                  key={p.id}
-                  className={`ficha ficha--${tono} ${detalle === p.id ? 'ficha--activa' : ''}`}
-                  tabIndex={0}
-                  role="button"
-                  onClick={() => setDetalle(p.id)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetalle(p.id); } }}
-                >
-                  <div className="ficha__cabecera">
-                    <Monograma texto={p.nombre} tono={tono} />
-                    <div className="ficha__titulos">
-                      <h3 className="ficha__nombre">{nombrePropio(p.nombre)}</h3>
-                      <span className="ficha__sub">
-                        <LuMapPin aria-hidden="true" />
-                        {capitalizar(p.ciudad) || 'Sin ciudad'}
-                      </span>
-                    </div>
-                    {esDestacado && <Insignia tono="info" icono={false}>Clave</Insignia>}
-                  </div>
-
-                  <div className="ficha__detalles">
-                    <div className="ficha__linea">
-                      <span className="ficha__linea-izq">
-                        <LuUser aria-hidden="true" />
-                        <span>{nombrePropio(p.contacto ?? '') || 'Sin contacto'}</span>
-                      </span>
-                    </div>
-                    <div className="ficha__linea">
-                      <span className="ficha__linea-izq">
-                        <LuPhone aria-hidden="true" />
-                        <span className="numeros">{p.telefono ?? 'Sin teléfono'}</span>
-                      </span>
-                      {p.telefono && (
-                        <button
-                          type="button"
-                          className="ficha__copiar"
-                          onClick={(e) => { e.stopPropagation(); copiarTexto(p.telefono, avisar, 'Teléfono'); }}
-                          aria-label={`Copiar teléfono de ${nombrePropio(p.nombre)}`}
-                        >
-                          <LuCopy aria-hidden="true" /> Copiar
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="ficha__pie">
-                    <span className="ficha__pie-stats">
-                      <span className="ficha__pie-stat"><LuPackage size={12} aria-hidden="true" /> <strong>{numero(p.numProductos)}</strong> prod.</span>
-                      <span className="ficha__pie-stat"><strong>{numero(p.numCompras)}</strong> compras</span>
-                    </span>
-                    <span className="ficha__pie-fecha">{p.ultimaCompra ? fecha(p.ultimaCompra) : 'Sin compras'}</span>
-                  </div>
-                </article>
-              );
-            })}
+      <div className="directorio-dividido">
+        <div className="directorio-dividido__principal">
+          <div className="catalogo-controles">
+            <div className="catalogo-barra">
+              <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar proveedor" placeholder="Nombre, ciudad, contacto o teléfono" />
+              <SwitchVista vista={vista} alCambiar={setVista} />
+            </div>
+            {ciudades.length > 1 && (
+              <ChipsFiltro
+                etiqueta="Filtrar por ciudad"
+                valor={ciudad}
+                alCambiar={setCiudad}
+                opciones={[
+                  { valor: 'todas', etiqueta: 'Todas las ciudades', conteo: proveedores.length },
+                  ...ciudades.map(([c, n]) => ({ valor: c, etiqueta: capitalizar(c), conteo: n, icono: LuMapPin })),
+                ]}
+              />
+            )}
           </div>
-        ) : (
-          <Panel>
-            <Vacio icono={LuTruck} titulo="Ningún proveedor coincide">Prueba con otro nombre, ciudad o teléfono.</Vacio>
-          </Panel>
-        )
-      )}
 
-      {datos && vista === 'tabla' && (
-        <Panel>
-          <Tabla
-            etiqueta="Proveedores"
-            cargando={cargando}
-            porPagina={25}
-            filas={visibles}
-            alAbrir={(p) => setDetalle(p.id)}
-            columnas={[
-              {
-                clave: 'nombre', titulo: 'Proveedor', ordenable: true,
-                render: (p) => (
-                  <span className="celda-doble">
-                    <span>{nombrePropio(p.nombre)}</span>
-                    <span className="celda-doble__detalle">{capitalizar(p.ciudad)}</span>
-                  </span>
-                ),
-              },
-              { clave: 'contacto', titulo: 'Contacto', ordenable: true, render: (p) => nombrePropio(p.contacto ?? '') || '—' },
-              { clave: 'telefono', titulo: 'Teléfono', render: (p) => <span className="numeros">{p.telefono ?? '—'}</span> },
-              { clave: 'numProductos', titulo: 'Productos', ordenable: true, alinear: 'der', render: (p) => <span className="numeros">{p.numProductos}</span> },
-              { clave: 'numCompras', titulo: 'Compras', ordenable: true, alinear: 'der', render: (p) => <span className="numeros">{p.numCompras}</span> },
-              { clave: 'ultimaCompra', titulo: 'Última compra', ordenable: true, render: (p) => <span className="texto-2">{p.ultimaCompra ? fecha(p.ultimaCompra) : 'Nunca'}</span> },
-            ]}
-            vacio={<Vacio icono={LuTruck} titulo="Ningún proveedor coincide">Prueba con el nombre, la ciudad o el teléfono.</Vacio>}
-          />
-        </Panel>
-      )}
+          <MensajeError error={error} alReintentar={recargar} />
+          {cargando && !datos && (vista === 'tarjetas' ? <EsqueletoFichas cantidad={6} /> : <EsqueletoTabla />)}
+
+          {datos && vista === 'tarjetas' && (
+            visibles.length ? (
+              <>
+                <div className={`fichas-grid fichas-grid--compacto ${cargando ? 'recargando' : ''}`}>
+                  {paginados.map((p) => {
+                    const tono = tonoDeTexto(p.ciudad || p.nombre);
+                    const esDestacado = Number(p.numProductos) >= 3;
+                    return (
+                      <article
+                        key={p.id}
+                        className={`ficha ficha--${tono} ${detalle === p.id ? 'ficha--activa' : ''}`}
+                        tabIndex={0}
+                        role="button"
+                        onClick={() => setDetalle(p.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetalle(p.id); } }}
+                      >
+                        <div className="ficha__cabecera">
+                          <Monograma texto={p.nombre} tono={tono} />
+                          <div className="ficha__titulos">
+                            <h3 className="ficha__nombre">{nombrePropio(p.nombre)}</h3>
+                            <span className="ficha__sub">
+                              <LuMapPin aria-hidden="true" />
+                              {capitalizar(p.ciudad) || 'Sin ciudad'}
+                            </span>
+                          </div>
+                          {esDestacado && <Insignia tono="info" icono={false}>Clave</Insignia>}
+                        </div>
+
+                        <div className="ficha__detalles">
+                          <div className="ficha__linea">
+                            <span className="ficha__linea-izq">
+                              <LuUser aria-hidden="true" />
+                              <span>{nombrePropio(p.contacto ?? '') || 'Sin contacto'}</span>
+                            </span>
+                            <button
+                              type="button"
+                              className="ficha__copiar"
+                              onClick={(e) => { e.stopPropagation(); setParaAgendar(p); }}
+                              aria-label={`Agendar llamada con ${nombrePropio(p.nombre)}`}
+                            >
+                              <LuBellPlus aria-hidden="true" /> Agendar
+                            </button>
+                          </div>
+                          <div className="ficha__linea">
+                            <span className="ficha__linea-izq">
+                              <LuPhone aria-hidden="true" />
+                              <span className="numeros">{p.telefono ?? 'Sin teléfono'}</span>
+                            </span>
+                            {p.telefono && (
+                              <button
+                                type="button"
+                                className="ficha__copiar"
+                                onClick={(e) => { e.stopPropagation(); copiarTexto(p.telefono, avisar, 'Teléfono'); }}
+                                aria-label={`Copiar teléfono de ${nombrePropio(p.nombre)}`}
+                              >
+                                <LuCopy aria-hidden="true" /> Copiar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="ficha__pie">
+                          <span className="ficha__pie-stats">
+                            <span className="ficha__pie-stat"><LuPackage size={12} aria-hidden="true" /> <strong>{numero(p.numProductos)}</strong> prod.</span>
+                            <span className="ficha__pie-stat"><strong>{numero(p.numCompras)}</strong> compras</span>
+                          </span>
+                          <span className="ficha__pie-fecha">{p.ultimaCompra ? fecha(p.ultimaCompra) : 'Sin compras'}</span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+                {visibles.length > POR_PAGINA_FICHAS && (
+                  <div className="panel panel--paginacion">
+                    <Paginacion pagina={pagina} limite={POR_PAGINA_FICHAS} total={visibles.length} alCambiar={setPagina} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <Panel>
+                <Vacio icono={LuTruck} titulo="Ningún proveedor coincide">Prueba con otro nombre, ciudad o teléfono.</Vacio>
+              </Panel>
+            )
+          )}
+
+          {datos && vista === 'tabla' && (
+            <Panel>
+              <Tabla
+                etiqueta="Proveedores"
+                cargando={cargando}
+                porPagina={12}
+                filas={visibles}
+                alAbrir={(p) => setDetalle(p.id)}
+                columnas={[
+                  {
+                    clave: 'nombre', titulo: 'Proveedor', ordenable: true,
+                    render: (p) => (
+                      <span className="celda-doble">
+                        <span>{nombrePropio(p.nombre)}</span>
+                        <span className="celda-doble__detalle">{capitalizar(p.ciudad)}</span>
+                      </span>
+                    ),
+                  },
+                  { clave: 'contacto', titulo: 'Contacto', ordenable: true, render: (p) => nombrePropio(p.contacto ?? '') || '—' },
+                  { clave: 'telefono', titulo: 'Teléfono', render: (p) => <span className="numeros">{p.telefono ?? '—'}</span> },
+                  { clave: 'numProductos', titulo: 'Productos', ordenable: true, alinear: 'der', render: (p) => <span className="numeros">{p.numProductos}</span> },
+                  { clave: 'ultimaCompra', titulo: 'Última compra', ordenable: true, render: (p) => <span className="texto-2">{p.ultimaCompra ? fecha(p.ultimaCompra) : 'Nunca'}</span> },
+                ]}
+                vacio={<Vacio icono={LuTruck} titulo="Ningún proveedor coincide">Prueba con el nombre, la ciudad o el teléfono.</Vacio>}
+              />
+            </Panel>
+          )}
+        </div>
+
+        <AgendaContactos
+          clave="proveedores"
+          etiquetaEntidad="proveedor"
+          contactos={proveedores}
+          destacados={destacados}
+          tituloDestacados="Proveedores clave"
+          subtituloDestacados="Marca rápido, abre WhatsApp o agenda una llamada."
+          preseleccion={paraAgendar}
+          alConsumirPreseleccion={() => setParaAgendar(null)}
+          alAbrirContacto={(p) => setDetalle(p.id)}
+          avisar={avisar}
+        />
+      </div>
 
       <InspectorProveedor
         id={detalle}

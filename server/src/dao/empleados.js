@@ -52,9 +52,9 @@ async function guardarSupervisor(q, id, supervisorId) {
 
 export async function crear(q, d) {
   const [f] = await q(
-    `insert into empleado (nombre, turno, salario, usuario)
-     values ($1, $2, $3, $4) returning id_e`,
-    [d.nombre, d.turno, d.salario, d.usuario],
+    `insert into empleado (nombre, turno, salario)
+     values ($1, $2, $3) returning id_e`,
+    [d.nombre, d.turno, d.salario],
   );
   await guardarSupervisor(q, f.id_e, d.supervisorId);
   return f.id_e;
@@ -62,9 +62,9 @@ export async function crear(q, d) {
 
 export async function actualizar(q, id, d) {
   const filas = await q(
-    `update empleado set nombre = $2, turno = $3, salario = $4, usuario = $5
+    `update empleado set nombre = $2, turno = $3, salario = $4
      where id_e = $1 returning id_e`,
-    [id, d.nombre, d.turno, d.salario, d.usuario],
+    [id, d.nombre, d.turno, d.salario],
   );
   if (!filas.length) return false;
   await guardarSupervisor(q, id, d.supervisorId);

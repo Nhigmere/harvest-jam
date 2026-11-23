@@ -16,6 +16,7 @@ sobre la misma base de datos **PostgreSQL** (con sus errores corregidos).
 | Interfaz | React | 19.1 | Pantallas y componentes |
 | Interfaz | Vite + `@vitejs/plugin-react` | 7 y 5 | Servidor de desarrollo y compilación |
 | Interfaz | react-icons (íconos Lucide) | 5.7 | Íconos |
+| Pruebas | `node:test` + `node:assert/strict` | Nativo de Node | 8 pruebas unitarias puras del ETL y del módulo DSS |
 | Proyecto | npm workspaces | El npm que viene con Node | Un solo `npm install` para `server` y `client` |
 
 En total son 2 dependencias en el servidor y 3 en la interfaz (más 2 de
@@ -45,15 +46,21 @@ Servidor (Node.js + Express)
    │  cada sesión abre su conexión con el usuario y la contraseña
    │  de PostgreSQL de quien inició sesión
    ▼
-PostgreSQL · base "TBD" · esquema fruteria
-   los triggers mueven el stock y escriben la auditoría
+PostgreSQL · base "TBD"
+   ├── esquema fruteria (OLTP): los triggers mueven el stock y escriben la auditoría
+   └── esquema etl (Analítico + DSS): tablas limpias, bitácora, cuarentena y fotos de decisión
 ```
 
 ## Servidor (`server/`)
 
 - **Express 5.** Una ruta por módulo: `auth`, `productos`, `clientes`,
-  `proveedores`, `empleados`, `ventas`, `compras`, `reportes`, `dashboard` y
-  `auditoria`. Las consultas SQL viven en `src/dao/`.
+  `proveedores`, `empleados`, `ventas`, `compras`, `reportes`, `dashboard`,
+  `auditoria`, **`etl`** y **`dss`**. Las consultas SQL viven en `src/dao/`
+  (incluido `src/dao/dss.js`).
+- **Motor ETL y módulo DSS en funciones puras.** La lógica de limpieza,
+  imputación y cuarentena (`src/etl/`) y el modelo de indicadores, prioridades
+  y escenarios (`src/dss/`) están separados de la base de datos para poder
+  probarse con `node --test` (`server/test/etl.test.js` y `dss.test.js`).
 - **Inicio de sesión con PostgreSQL.** El usuario y la contraseña son los de
   PostgreSQL. La sesión se guarda en memoria y se identifica con una cookie
   `HttpOnly` y `SameSite=Strict`. Tras 5 intentos fallidos en 10 minutos se
@@ -86,6 +93,9 @@ PostgreSQL · base "TBD" · esquema fruteria
 - **Ventanas modales** con el elemento nativo `<dialog>`.
 - **Responsive**: menú completo en pantallas grandes, solo íconos entre 821 y
   1180 px, y menú desplegable en celular.
+- **Módulos analíticos integrados**: **Bitácora ETL** (`/etl`, estilo Auditoría
+  con cambios *Antes → Después* y cuarentena) y **Decisiones** (`/decisiones`,
+  5 KPIs, 4 escenarios, presupuesto semanal, modal *«¿Por qué?»* y fotos DSS).
 
 ## Base de datos (`base-de-datos/`)
 
@@ -99,16 +109,21 @@ Los scripts van numerados en el orden en que se ejecutan:
 | `04_roles.sql` | Roles (administrador, gerente, contador, comprador, admin. de clientes, cajero), usuarios y permisos |
 | `05_datos.sql` | Datos del proyecto original, corregidos |
 | `06_datos_simulados.sql` | Opcional: 90 días de ventas y compras simuladas para que los reportes tengan qué mostrar |
-| `99_borrar_todo.sql` | Borra el esquema para empezar de cero |
+| `07_dss.sql` | Esquema analítico `etl` (9 tablas de ETL y DSS, 6 índices y permisos por rol; idempotente) |
+| `99_borrar_todo.sql` | Borra el esquema `fruteria` para empezar de cero |
 
-El detalle de lo que se corrigió está en `docs/CAMBIOS_BD.md`.
+El funcionamiento detallado del ETL vive en [`docs/MANUAL_FUNCIONAMIENTO_ETL.md`](docs/MANUAL_FUNCIONAMIENTO_ETL.md) y el resumen completo en [`docs/explicacion.html`](docs/explicacion.html).
 
 ## Comandos
 
 | Comando | Qué hace |
 |---|---|
 | `npm install` | Instala todo (servidor e interfaz) |
-| `npm run db:setup` | Crea la base `TBD` y ejecuta los scripts (`-- --reiniciar` para empezar de cero, `-- --sin-simulados` para omitir el 06) |
+| `npm run db:setup` | Crea la base `TBD` y ejecuta los scripts `01` a `07` (`-- --reiniciar` para empezar de cero, `-- --sin-simulados` para omitir el 06) |
+| `npm run dss:init` | Aplica `07_dss.sql` sobre una base existente sin borrar datos y corre la primera carga del ETL |
+| `npm run etl` | Ejecuta el ETL en modo `completo` desde la terminal |
+| `npm run etl:prueba` | Ejecuta el ETL en modo `prueba` (anomalías controladas sin alterar tablas limpias) |
+| `npm test` | Ejecuta las 8 pruebas unitarias (`server/test/*.test.js`) sin requerir PostgreSQL |
 | `npm run dev` | Levanta la API en el puerto 3001 y la interfaz en http://localhost:5173 |
 | `npm run build` | Compila la interfaz en `client/dist` |
 | `npm start` | Levanta la API, que también sirve la interfaz compilada, en http://localhost:3001 |

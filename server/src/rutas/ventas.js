@@ -28,6 +28,20 @@ router.get('/', requiere(P.VER_VENTAS), ruta(async (req, res) => {
   res.json({ ...lista, resumen, pagina: pag.pagina, limite: pag.limite, desde: filtros.desde, hasta: filtros.hasta });
 }));
 
+router.get('/dias', requiere(P.VER_VENTAS), ruta(async (req, res) => {
+  const mesRaw = String(req.query.mes ?? '').trim();
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(mesRaw);
+  const hoy = new Date();
+  const anio = match ? Number(match[1]) : hoy.getFullYear();
+  const mes = match ? Number(match[2]) : hoy.getMonth() + 1;
+  const ultimoDia = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+  const prefijo = `${String(anio).padStart(4, '0')}-${String(mes).padStart(2, '0')}`;
+  const desde = `${prefijo}-01`;
+  const hasta = `${prefijo}-${String(ultimoDia).padStart(2, '0')}`;
+  const dias = await ventas.diasConVentas(req.consultar, { desde, hasta });
+  res.json({ mes: prefijo, dias });
+}));
+
 router.get('/:folio', requiere(P.VER_VENTAS), ruta(async (req, res) => {
   const venta = await ventas.obtener(req.consultar, id(req.params.folio, 'El folio'));
   if (!venta) throw noEncontrado('La venta');

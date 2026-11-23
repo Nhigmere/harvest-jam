@@ -21,11 +21,6 @@ function validarEmpleado(cuerpo = {}, idActual = null) {
     }).toLowerCase(),
     turno: opcion(cuerpo.turno, TURNOS, { campo: 'turno', etiqueta: 'El turno', requerido: true }),
     salario: numero(cuerpo.salario, { campo: 'salario', etiqueta: 'El salario', requerido: true, min: 100, max: 999_999.99 }),
-    usuario: texto(cuerpo.usuario, {
-      campo: 'usuario', etiqueta: 'El usuario', max: 63,
-      patron: /^[a-z_][a-z0-9_]*$/,
-      mensajePatron: 'El usuario debe ir en minúsculas, sin espacios ni acentos (por ejemplo: maria_lopez).',
-    }),
     supervisorId,
   };
 }

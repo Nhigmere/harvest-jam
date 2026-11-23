@@ -28,13 +28,13 @@
 
 ```mermaid
 flowchart LR
-    A["1. POS (fruteria.*)\nProductos, Ventas,\nCompras y Proveedores"] --> B["2. Extracción\n(Solo lectura)"]
-    B --> C["3. Limpieza y\nValidación\n(Reglas L1–L4 y V1–V4)"]
+    A["1. Fuentes\nPOS (fruteria.*) +\n2 CSV en datos-externos/"] --> B["2. Extracción\n(Solo lectura)"]
+    B --> C["3. Limpieza, Imputación\ny Validación\n(L1–L4, I1 y V1–V4)"]
     C -- "Dato inválido" --> D["Cuarentena\n(etl.rechazos)"]
-    C -- "Dato válido" --> E["4. Carga limpia\n(etl.venta_limpia y\netl.resumen_producto)"]
+    C -- "Dato válido" --> E["4. Carga limpia\n(etl.parametros_producto,\netl.venta_limpia y\netl.resumen_producto)"]
     C & E --> F["Bitácora\n(etl.corridas y\netl.cambios)"]
     F --> G["Pantalla /etl\n(Vista estilo Auditoría)"]
-    E --> H["Módulo de Decisión\n(Prioridad de compra)"]
+    E --> H["Módulo de Decisión /decisiones\n(Prioridad, escenarios y fotos DSS)"]
 ```
 
 El ETL tiene solo **2 modos de ejecución**:
@@ -51,50 +51,65 @@ Porque dentro de una transacción de PostgreSQL (`BEGIN ... COMMIT`), el ETL ree
 
 ---
 
-## 4. Las 5 tablas del esquema `etl` (sin complicaciones)
+## 4. Las 9 tablas del esquema `etl` (sin complicaciones)
 
-En la **misma base de datos PostgreSQL** de Harvest JAM se agrega el esquema `etl` con solo **5 tablas** de nombres obvios:
+En la **misma base de datos PostgreSQL** de Harvest JAM se agrega el esquema `etl` (`base-de-datos/07_dss.sql`) con **9 tablas** agrupadas en 3 bloques:
 
-### Tablas de control y trazabilidad (3)
+### Tablas de control y trazabilidad del ETL (3)
 | Tabla | Qué guarda | Para qué sirve |
 |---|---|---|
-| **`etl.corridas`** | Una fila por cada ejecución (fecha, modo `completo`/`prueba`, quién lo corrió, estado, cuántos registros entraron, cuántos se limpiaron y cuántos se rechazaron) | Saber cuándo fue la última actualización y si salió bien |
-| **`etl.cambios`** | Cada cambio hecho a un dato: `corrida_id`, `entidad`, `clave` (código o folio), `tipo` (`LIMPIADO`, `RECHAZADO`, `CARGADO`), `regla`, `valor_antes`, `valor_despues` y `motivo` | Alimentar la pantalla `/etl` (estilo Auditoría) para ver el *antes → después* |
-| **`etl.rechazos`** | Copia del dato inválido que no pasó validación (`corrida_id`, `entidad`, `clave`, `regla`, `motivo`, `dato_original` en JSON) | Cuarentena: ver qué datos malos se frenaron sin romper la corrida |
+| **`etl.corridas`** | Una fila por cada ejecución (fecha, modo `completo`/`prueba`, quién lo corrió, estado, cuántos registros entraron, se limpiaron, se imputaron, se cargaron y se rechazaron, más `fecha_corte`) | Saber cuándo fue la última actualización y si salió bien |
+| **`etl.cambios`** | Cada cambio hecho a un dato: `corrida_id`, `entidad`, `fuente`, `clave`, `campo`, `tipo` (`LIMPIADO`, `IMPUTADO`, `RECHAZADO`, `CARGADO`), `regla`, `valor_antes`, `valor_despues`, `motivo` y `jsonb` antes/después | Alimentar la pantalla `/etl` (estilo Auditoría) para ver el *antes → después* |
+| **`etl.rechazos`** | Copia del dato inválido que no pasó validación (`corrida_id`, `entidad`, `fuente`, `clave`, `regla`, `motivo`, `dato_original` en JSON) | Cuarentena: ver qué datos malos se frenaron sin romper la corrida |
 
 > **Cómo explicarlo en la defensa:** *"Estas tres tablas son la evidencia de nuestro ETL: `corridas` dice cuándo corrió, `cambios` muestra cada arreglo paso a paso y `rechazos` guarda en cuarentena lo que no pasó las reglas de calidad."*
 
-### Tablas de resultado limpio (2)
+### Tablas de resultado limpio (3)
 | Tabla | Qué guarda | Qué contiene |
 |---|---|---|
-| **`etl.venta_limpia`** | Cada renglón de venta ya validado | `folio_v`, `fecha`, `codigo`, `producto`, `categoria`, `unidad_medida`, `cantidad`, `precio_unitario`, `costo_unitario`, `importe`, `margen` |
-| **`etl.resumen_producto`** | Una fila por producto lista para decidir qué comprar | **Variables:** `codigo`, `descripcion`, `categoria`, `unidad_medida`, `existencia`, `precio_c`, `precio_v`, `proveedor_principal`.<br>**Indicadores:** `demanda_diaria`, `dias_cobertura`, `rotacion`, `margen_pct`, `datos_suficientes` |
+| **`etl.parametros_producto`** | Parámetros externos ya depurados por producto | `codigo`, `stock_minimo`, `vida_util_dias`, `dias_entrega`, `entrega_imputada`, `proveedor_principal`, `fuente` |
+| **`etl.venta_limpia`** | Cada renglón de venta ya validado | `folio_v`, `codigo`, `fecha`, `producto`, `categoria`, `unidad_medida`, `cantidad`, `precio_unitario`, `costo_unitario`, `importe`, `margen` |
+| **`etl.resumen_producto`** | Una fila por producto lista para decidir qué comprar | **Variables:** `codigo`, `descripcion`, `categoria`, `unidad_medida`, `existencia`, `precio_c`, `precio_v`, `stock_minimo`, `vida_util_dias`, `dias_entrega`, `entrega_imputada`, `proveedor_principal`.<br>**Indicadores:** `demanda_diaria`, `dias_cobertura`, `rotacion`, `brecha_minimo`, `margen_entrega`, `margen_pct`, `riesgo_merma`, `datos_suficientes` |
 
-> **Cómo explicarlo en la defensa:** *"No hicimos un modelo dimensional complejo con llaves artificiales; dejamos dos tablas limpias con los mismos códigos de producto del POS para que cualquiera pueda leerlas y entender de dónde sale cada número."*
+### Tablas de trazabilidad del DSS (3)
+| Tabla | Qué guarda | Para qué sirve |
+|---|---|---|
+| **`etl.dss_parametros`** | Versión `v1` de umbrales y pesos (`40/25/20/15 %`) | Mantener los criterios del modelo versionados y auditables |
+| **`etl.dss_corridas`** | Cabecera de cada "foto de decisión" guardada en `/decisiones` | Guardar escenario, factor de demanda, retraso, presupuesto y totales |
+| **`etl.dss_recomendaciones`** | Detalle por producto de cada foto DSS | Guardar prioridad, puntaje, cantidad sugerida, costo, explicación y `desglose jsonb` |
+
+> **Cómo explicarlo en la defensa:** *"No hicimos un modelo dimensional complejo con llaves artificiales; dejamos tablas limpias con los mismos códigos de producto del POS y tablas de trazabilidad para que cualquiera pueda leerlas y entender de dónde sale cada número."*
 
 ---
 
-## 5. Reglas de limpieza y validación (las 8 esenciales)
+## 5. Reglas de limpieza, imputación y validación
 
 ### 4 reglas de limpieza (corrigen el dato y sí entra)
 
 | Código | Nombre | Qué hace |
 |---|---|---|
-| **`L1`** | **Texto limpio** | Quita espacios sobrantes y unifica mayúsculas/minúsculas en nombres de productos y proveedores. |
-| **`L2`** | **Categoría estándar** | Unifica categorías a minúsculas (`"FRUTAS "` → `"fruta"`). Si viene vacía, pone `"sin_clasificar"`. |
-| **`L3`** | **Unidad estándar** | Convierte abreviaturas a la unidad oficial (`"kg"` / `"kilo"` → `"kilogramo"`, `"pza"` → `"pieza"`). |
-| **`L4`** | **Sin duplicados** | Si llegan dos renglones repetidos con el mismo `(folio, codigo)` en el mismo lote, deja solo uno y anota el cambio. |
+| **`L1`** | **Texto y código limpios** | Quita espacios sobrantes y ceros a la izquierda en códigos (`" 5000"`, `"05001"`) y unifica mayúsculas/minúsculas en nombres. |
+| **`L2`** | **Categoría, decimal y fecha estándar** | Unifica categorías (`"FRUTAS "` → `"fruta"`, vacío → `"sin_clasificar"`), convierte coma decimal a punto (`"12,5"` → `12.5`) y fechas `DD/MM/YYYY` a ISO `YYYY-MM-DD`. |
+| **`L3`** | **Unidad estándar** | Convierte abreviaturas a la unidad oficial (`"kg"` / `"kilo"` → `"kilogramo"`, `"pza"` → `"pieza"`, `"lt"` → `"litro"`). |
+| **`L4`** | **Sin duplicados** | En CSV conserva el registro con fecha más reciente; en ventas descarta renglones repetidos con el mismo `(folio_v, codigo)`. |
+
+### 1 regla de imputación y 1 de conciliación
+
+| Código | Nombre | Qué hace |
+|---|---|---|
+| **`I1`** | **Entrega imputada** | Si falta `dias_entrega` en `tiempos_entrega_proveedor.csv`, asigna el estándar de `2 días`, marca `entrega_imputada = true` y muestra un aviso visible en `/decisiones` para revisión humana. |
+| **`LD-01`** | **Resumen de carga** | Registra en `etl.cambios` cuántas ventas y productos quedaron cargados tras la transacción atómica. |
 
 ### 4 reglas de validación (frenan el dato malo → Cuarentena)
 
 | Código | Nombre | Cuándo rechaza el registro |
 |---|---|---|
-| **`V1`** | **Producto válido** | Si el código está vacío o no existe en el catálogo de productos. |
-| **`V2`** | **Cantidad y stock válidos** | Si la cantidad vendida es `<= 0`, o si la existencia es negativa (`< 0`). |
-| **`V3`** | **Precio válido** | Si el precio de venta es `<= 0` o el costo es negativo (`< 0`). |
-| **`V4`** | **Fecha válida** | Si la fecha está vacía, mal escrita o está en el futuro (mayor a hoy). |
+| **`V1`** | **Producto válido** | Si el código está vacío, no es numérico o no existe en `fruteria.producto` (ej. `9999`). |
+| **`V2`** | **Cantidad y stock válidos** | Si la cantidad vendida es `<= 0` (ej. `-4`), o si `stock_minimo` es negativo (`< 0`, ej. `-5`). |
+| **`V3`** | **Precio y rangos válidos** | Si el precio de venta es `<= 0`, `vida_util_dias` está fuera de `1..60` días (ej. `0`) o `dias_entrega` fuera de `0..30` días (ej. `400`). |
+| **`V4`** | **Fecha válida** | Si la fecha está vacía, mal escrita (`"fecha-mala"`) o está en el futuro (`2099-05-01`). |
 
-> **Cómo explicarlo en la defensa:** *"Tenemos 4 reglas de limpieza (`L1` a `L4`) para arreglar problemas de formato y 4 reglas de validación (`V1` a `V4`) para frenar datos imposibles y mandarlos a cuarentena."*
+> **Cómo explicarlo en la defensa:** *"Tenemos 4 reglas de limpieza (`L1–L4`) para formato y duplicados, 1 regla de imputación transparente (`I1`) para entregas vacías y 4 reglas de validación (`V1–V4`) para mandar datos imposibles a cuarentena."*
 
 ---
 
@@ -132,14 +147,22 @@ Se usa exactamente la misma tecnología actual (PostgreSQL + Express + React), s
 ```text
 harvest-jam/
 ├── base-de-datos/
-│   └── 07_etl.sql                 # Crea el esquema etl y sus 5 tablas + permisos
+│   └── 07_dss.sql                 # Crea el esquema etl (9 tablas, 6 índices y permisos)
+├── datos-externos/
+│   ├── parametros_producto.csv    # Stock mínimo y vida útil (simulado con anomalías)
+│   └── tiempos_entrega_proveedor.csv # Plazos de entrega (simulado con huecos y errores)
 ├── server/src/
 │   ├── etl/
 │   │   ├── ejecutar.js            # Orquesta los pasos: extraer → limpiar → validar → cargar
-│   │   ├── reglas.js              # Las 4 reglas L1–L4 y 4 reglas V1–V4 (fáciles de leer y probar)
-│   │   └── datosPrueba.js         # Los casos sucios/inválidos para el botón "Probar datos inválidos"
+│   │   ├── reglas.js              # Lector CSV + reglas puras L1–L4, I1 y V1–V4
+│   │   ├── datosPrueba.js         # Los casos sucios/inválidos para "Probar datos inválidos"
+│   │   └── cli.js                 # Ejecución por consola (npm run etl / npm run etl:prueba)
+│   ├── dao/
+│   │   └── dss.js                 # Consultas SQL parametrizadas del esquema etl
 │   └── rutas/
-│       └── etl.js                 # Endpoints: GET /api/etl/resumen, GET /api/etl/cambios, POST /api/etl/ejecutar
+│       └── etl.js                 # Endpoints: GET /api/etl/corridas, GET /api/etl/cambios, POST /api/etl/ejecutar
+├── server/test/
+│   └── etl.test.js                # Pruebas unitarias automatizadas de reglas ETL
 └── client/src/paginas/
     └── BitacoraEtl.jsx            # Pantalla /etl con diseño igual al de Auditoría
 ```

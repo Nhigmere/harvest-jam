@@ -1,10 +1,12 @@
-// Catálogo de productos e inventario: fichas editoriales con precios, barra de stock e inspector lateral.
+// Catálogo de productos e inventario: fichas editoriales, monitor de frescura/merma, recordatorios y notas.
 import { useEffect, useMemo, useState } from 'react';
 import {
-  LuApple, LuCircleCheck, LuPackage, LuPencil, LuPlus, LuSprout, LuTag, LuTrash2, LuTriangleAlert, LuTruck, LuWallet,
+  LuApple, LuBellPlus, LuCircleCheck, LuHourglass, LuPackage, LuPencil, LuPlus, LuSprout, LuTag, LuTrash2,
+  LuTriangleAlert, LuTruck, LuWallet,
 } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
+import { PanelNotas, PanelRecordatorios } from '../componentes/AgendaContactos.jsx';
 import {
   ChipsFiltro, Drawer, EsqueletoFichas, Monograma, ResumenCatalogo, SwitchVista, tonoDeTexto, useVistaCatalogo,
 } from '../componentes/Catalogo.jsx';
@@ -13,7 +15,7 @@ import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { useFormulario } from '../componentes/formulario.js';
 import { Tabla } from '../componentes/Tabla.jsx';
 import {
-  Boton, BotonIcono, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Panel, Vacio,
+  Boton, BotonIcono, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Paginacion, Panel, Vacio,
 } from '../componentes/ui.jsx';
 import {
   abreviaturaUnidad, capitalizar, cantidad, esFraccionable, moneda, monedaRedonda, nombrePropio, numero, porcentaje,
@@ -283,22 +285,97 @@ export default function Productos() {
   const { puede } = useSesion();
   const { avisar, confirmar } = useDialogos();
   const { datos, error, cargando, recargar } = useApi('/productos');
+  const dssApi = useApi('/dss/analisis', null, { activo: puede('VER_DSS') });
   const [busqueda, setBusqueda] = useState('');
   const [categoria, setCategoria] = useState('todas');
   const [estado, setEstado] = useState('todos');
+  const [pagina, setPagina] = useState(1);
+  const [tabMonitor, setTabMonitor] = useState('caducar');
   const [vista, setVista] = useVistaCatalogo('productos');
   const [detalle, setDetalle] = useState(null);
   const [editando, setEditando] = useState(null);
+  const [paraAgendar, setParaAgendar] = useState(null);
 
   const productos = datos?.productos ?? [];
   const umbral = datos?.umbralStockBajo ?? 10;
   const categorias = useMemo(() => [...new Set(productos.map((p) => p.categoria))].sort(), [productos]);
+
+  useEffect(() => setPagina(1), [busqueda, categoria, estado, vista]);
 
   const porCategoria = productos.filter((p) => categoria === 'todas' || p.categoria === categoria);
   const conteo = (e) => porCategoria.filter((p) => e === 'todos' || estadoDe(p, umbral) === e).length;
   const q = busqueda.trim().toLowerCase();
   const visibles = porCategoria.filter((p) => (estado === 'todos' || estadoDe(p, umbral) === estado)
     && (!q || p.descripcion.includes(q) || String(p.codigo) === q));
+
+  const POR_PAGINA_FICHAS = 8;
+  const paginados = useMemo(() => {
+    const inicio = (pagina - 1) * POR_PAGINA_FICHAS;
+    return visibles.slice(inicio, inicio + POR_PAGINA_FICHAS);
+  }, [visibles, pagina]);
+
+  const mapaProductos = useMemo(() => new Map(productos.map((p) => [p.codigo, p])), [productos]);
+
+  // Productos cerca de caducar / con riesgo de merma (vía vida útil del ETL/DSS)
+  const porCaducar = useMemo(() => {
+    const recs = dssApi.datos?.evaluacion?.recomendaciones ?? [];
+    if (!recs.length) return [];
+    return [...recs]
+      .filter((r) => r.existencia > 0)
+      .sort((a, b) => Number(b.riesgoMerma) - Number(a.riesgoMerma) || a.vidaUtilDias - b.vidaUtilDias)
+      .slice(0, 5)
+      .map((r) => ({
+        codigo: r.codigo,
+        nombre: capitalizar(r.descripcion),
+        sub: r.riesgoMerma
+          ? `Cobertura ${r.diasCobertura?.toFixed(1) ?? '—'} d > vida útil ${r.vidaUtilDias} d`
+          : `Vida útil ${r.vidaUtilDias} días · stock ${cantidad(r.existencia, r.unidadMedida)}`,
+        badge: r.riesgoMerma ? { texto: 'Merma', tono: 'aviso' } : { texto: `${r.vidaUtilDias} d`, tono: 'info' },
+        raw: mapaProductos.get(r.codigo),
+        motivo: r.riesgoMerma ? 'Promover salida antes de merma' : 'Revisar frescura en anaquel',
+      }));
+  }, [dssApi.datos, mapaProductos]);
+
+  const stockCritico = useMemo(() => (
+    [...productos]
+      .filter((p) => p.existencia <= umbral)
+      .sort((a, b) => a.existencia - b.existencia)
+      .slice(0, 5)
+      .map((p) => ({
+        codigo: p.codigo,
+        nombre: capitalizar(p.descripcion),
+        sub: `Existencia ${cantidad(p.existencia, p.unidadMedida)} · umbral ${umbral}`,
+        badge: p.existencia <= 0 ? { texto: 'Agotado', tono: 'critico' } : { texto: 'Bajo', tono: 'aviso' },
+        raw: p,
+        motivo: 'Verificar pedido de reabastecimiento',
+      }))
+  ), [productos, umbral]);
+
+  const mejorMargen = useMemo(() => (
+    [...productos]
+      .filter((p) => p.precioVenta > 0)
+      .sort((a, b) => margen(b) - margen(a))
+      .slice(0, 5)
+      .map((p) => ({
+        codigo: p.codigo,
+        nombre: capitalizar(p.descripcion),
+        sub: `Venta ${moneda(p.precioVenta)} · costo ${moneda(p.precioCompra)}`,
+        badge: { texto: porcentaje(margen(p), 0), tono: 'ok' },
+        raw: p,
+        motivo: 'Revisar exhibición y disponibilidad',
+      }))
+  ), [productos]);
+
+  const listaMonitor = tabMonitor === 'caducar'
+    ? (porCaducar.length ? porCaducar : stockCritico)
+    : tabMonitor === 'stock'
+      ? stockCritico
+      : mejorMargen;
+
+  const opcionesRecordatorio = useMemo(
+    () => productos.map((p) => ({ id: p.codigo, nombre: `${capitalizar(p.descripcion)} (#${p.codigo})` })),
+    [productos],
+  );
 
   const puedeEditar = puede('EDITAR_PRODUCTOS');
 
@@ -353,142 +430,257 @@ export default function Productos() {
         />
       )}
 
-      <div className="catalogo-controles">
-        <div className="catalogo-barra">
-          <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar producto" placeholder="Nombre o código" />
-          <SwitchVista vista={vista} alCambiar={setVista} />
-        </div>
-        <div className="filtros">
-          <ChipsFiltro
-            etiqueta="Categoría"
-            valor={categoria}
-            alCambiar={setCategoria}
-            opciones={[
-              { valor: 'todas', etiqueta: 'Todas', conteo: productos.length },
-              ...categorias.map((c) => ({
-                valor: c,
-                etiqueta: capitalizar(c),
-                icono: iconoCategoria(c),
-                conteo: productos.filter((p) => p.categoria === c).length,
-              })),
-            ]}
-          />
-          <ChipsFiltro
-            etiqueta="Existencia"
-            valor={estado}
-            alCambiar={setEstado}
-            opciones={[
-              { valor: 'todos', etiqueta: 'Todos', conteo: conteo('todos') },
-              { valor: 'disponible', etiqueta: 'Disponibles', conteo: conteo('disponible') },
-              { valor: 'bajo', etiqueta: 'Por acabarse', conteo: conteo('bajo') },
-              { valor: 'agotado', etiqueta: 'Agotados', conteo: conteo('agotado') },
-            ]}
-          />
-        </div>
-      </div>
-
-      <MensajeError error={error} alReintentar={recargar} />
-      {cargando && !datos && (vista === 'tarjetas' ? <EsqueletoFichas /> : <EsqueletoTabla />)}
-
-      {datos && vista === 'tarjetas' && (
-        visibles.length ? (
-          <div className={`fichas-grid ${cargando ? 'recargando' : ''}`}>
-            {visibles.map((p) => {
-              const est = estadoDe(p, umbral);
-              const tono = tonoCategoria(p.categoria);
-              const pctStock = Math.min((p.existencia / Math.max(umbral * 3, 1)) * 100, 100);
-              return (
-                <article
-                  key={p.codigo}
-                  className={`ficha ficha--${tono} ${detalle?.codigo === p.codigo ? 'ficha--activa' : ''}`}
-                  tabIndex={0}
-                  role="button"
-                  onClick={() => setDetalle(p)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetalle(p); } }}
-                >
-                  <div className="ficha__cabecera">
-                    <Monograma texto={p.descripcion} tono={tono} icono={iconoCategoria(p.categoria)} />
-                    <div className="ficha__titulos">
-                      <h3 className="ficha__nombre">{capitalizar(p.descripcion)}</h3>
-                      <span className="ficha__sub">#{p.codigo} · {capitalizar(p.categoria)}</span>
-                    </div>
-                    <InsigniaStock producto={p} umbral={umbral} />
-                  </div>
-
-                  <div className="ficha__precios">
-                    <span className="ficha__precio-venta">
-                      {moneda(p.precioVenta)}
-                      <span className="ficha__precio-unidad">/ {abreviaturaUnidad(p.unidadMedida, 1)}</span>
-                    </span>
-                    <span className="ficha__precio-meta">
-                      <span className="numeros">Costo {moneda(p.precioCompra)}</span>
-                      <span className="ficha__margen">{porcentaje(margen(p), 0)}</span>
-                    </span>
-                  </div>
-
-                  <div className="ficha__pie" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
-                    <div className="ficha__stock-fila">
-                      <span>Existencia</span>
-                      <strong className="numeros" style={{ color: 'var(--text-primary)' }}>{cantidad(p.existencia, p.unidadMedida)}</strong>
-                    </div>
-                    <span className="ficha__stock-pista">
-                      <span
-                        className={`ficha__stock-barra ${est === 'bajo' ? 'ficha__stock-barra--bajo' : est === 'agotado' ? 'ficha__stock-barra--agotado' : ''}`}
-                        style={{ width: `${est === 'agotado' ? 5 : Math.max(pctStock, 8)}%` }}
-                      />
-                    </span>
-                  </div>
-                </article>
-              );
-            })}
+      <div className="directorio-dividido">
+        <div className="directorio-dividido__principal">
+          <div className="catalogo-controles">
+            <div className="catalogo-barra">
+              <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar producto" placeholder="Nombre o código" />
+              <SwitchVista vista={vista} alCambiar={setVista} />
+            </div>
+            <div className="filtros">
+              <ChipsFiltro
+                etiqueta="Categoría"
+                valor={categoria}
+                alCambiar={setCategoria}
+                opciones={[
+                  { valor: 'todas', etiqueta: 'Todas', conteo: productos.length },
+                  ...categorias.map((c) => ({
+                    valor: c,
+                    etiqueta: capitalizar(c),
+                    icono: iconoCategoria(c),
+                    conteo: productos.filter((p) => p.categoria === c).length,
+                  })),
+                ]}
+              />
+              <ChipsFiltro
+                etiqueta="Existencia"
+                valor={estado}
+                alCambiar={setEstado}
+                opciones={[
+                  { valor: 'todos', etiqueta: 'Todos', conteo: conteo('todos') },
+                  { valor: 'disponible', etiqueta: 'Disponibles', conteo: conteo('disponible') },
+                  { valor: 'bajo', etiqueta: 'Por acabarse', conteo: conteo('bajo') },
+                  { valor: 'agotado', etiqueta: 'Agotados', conteo: conteo('agotado') },
+                ]}
+              />
+            </div>
           </div>
-        ) : (
-          <Panel>
-            <Vacio icono={LuApple} titulo="No hay productos con estos filtros">Cambia la búsqueda o los filtros de arriba.</Vacio>
-          </Panel>
-        )
-      )}
 
-      {datos && vista === 'tabla' && (
-        <Panel>
-          <Tabla
-            etiqueta="Productos"
-            clave="codigo"
-            cargando={cargando}
-            filas={visibles}
-            alAbrir={(p) => setDetalle(p)}
-            ordenInicial={{ clave: 'descripcion', asc: true }}
-            porPagina={50}
-            columnas={[
-              {
-                clave: 'descripcion', titulo: 'Producto', ordenable: true,
-                render: (p) => (
-                  <span className="celda-doble">
-                    <span>{capitalizar(p.descripcion)}</span>
-                    <span className="celda-doble__detalle">Código {p.codigo}, {p.categoria}</span>
-                  </span>
-                ),
-              },
-              {
-                clave: 'existencia', titulo: 'Existencia', ordenable: true, alinear: 'der',
-                render: (p) => <span className="numeros">{cantidad(p.existencia, p.unidadMedida)}</span>,
-              },
-              { clave: 'estado', titulo: 'Estado', render: (p) => <InsigniaStock producto={p} umbral={umbral} /> },
-              { clave: 'precioCompra', titulo: 'Costo', ordenable: true, alinear: 'der', render: (p) => <span className="numeros">{moneda(p.precioCompra)}</span> },
-              { clave: 'precioVenta', titulo: 'Precio', ordenable: true, alinear: 'der', render: (p) => <strong className="numeros">{moneda(p.precioVenta)}</strong> },
-              {
-                clave: 'margen', titulo: 'Margen', ordenable: true, alinear: 'der', valorOrden: margen,
-                render: (p) => <span className="numeros texto-2">{porcentaje(margen(p), 0)}</span>,
-              },
-              ...(puedeEditar ? [{
-                clave: 'acciones', titulo: <span className="solo-lectores">Acciones</span>, alinear: 'der',
-                render: (p) => <BotonIcono icono={LuPencil} etiqueta={`Editar ${p.descripcion}`} onClick={() => setEditando(p)} />,
-              }] : []),
-            ]}
-            vacio={<Vacio icono={LuApple} titulo="No hay productos con estos filtros">Cambia la búsqueda o los filtros de arriba.</Vacio>}
+          <MensajeError error={error} alReintentar={recargar} />
+          {cargando && !datos && (vista === 'tarjetas' ? <EsqueletoFichas cantidad={6} /> : <EsqueletoTabla />)}
+
+          {datos && vista === 'tarjetas' && (
+            visibles.length ? (
+              <>
+                <div className={`fichas-grid fichas-grid--compacto ${cargando ? 'recargando' : ''}`}>
+                  {paginados.map((p) => {
+                    const est = estadoDe(p, umbral);
+                    const tono = tonoCategoria(p.categoria);
+                    const pctStock = Math.min((p.existencia / Math.max(umbral * 3, 1)) * 100, 100);
+                    return (
+                      <article
+                        key={p.codigo}
+                        className={`ficha ficha--${tono} ${detalle?.codigo === p.codigo ? 'ficha--activa' : ''}`}
+                        tabIndex={0}
+                        role="button"
+                        onClick={() => setDetalle(p)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetalle(p); } }}
+                      >
+                        <div className="ficha__cabecera">
+                          <Monograma texto={p.descripcion} tono={tono} icono={iconoCategoria(p.categoria)} />
+                          <div className="ficha__titulos">
+                            <h3 className="ficha__nombre">{capitalizar(p.descripcion)}</h3>
+                            <span className="ficha__sub">#{p.codigo} · {capitalizar(p.categoria)}</span>
+                          </div>
+                          <InsigniaStock producto={p} umbral={umbral} />
+                        </div>
+
+                        <div className="ficha__precios">
+                          <span className="ficha__precio-venta">
+                            {moneda(p.precioVenta)}
+                            <span className="ficha__precio-unidad">/ {abreviaturaUnidad(p.unidadMedida, 1)}</span>
+                          </span>
+                          <span className="ficha__precio-meta">
+                            <span className="numeros">Costo {moneda(p.precioCompra)}</span>
+                            <span className="ficha__margen">{porcentaje(margen(p), 0)}</span>
+                          </span>
+                        </div>
+
+                        <div className="ficha__pie" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                          <div className="ficha__stock-fila">
+                            <span>Existencia: <strong className="numeros" style={{ color: 'var(--text-primary)' }}>{cantidad(p.existencia, p.unidadMedida)}</strong></span>
+                            <button
+                              type="button"
+                              className="ficha__copiar"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setParaAgendar({ id: p.codigo, nombre: `${capitalizar(p.descripcion)} (#${p.codigo})`, motivoSugerido: 'Revisar frescura y stock' });
+                              }}
+                              aria-label={`Agendar revisión de ${capitalizar(p.descripcion)}`}
+                            >
+                              <LuBellPlus aria-hidden="true" /> Agendar
+                            </button>
+                          </div>
+                          <span className="ficha__stock-pista">
+                            <span
+                              className={`ficha__stock-barra ${est === 'bajo' ? 'ficha__stock-barra--bajo' : est === 'agotado' ? 'ficha__stock-barra--agotado' : ''}`}
+                              style={{ width: `${est === 'agotado' ? 5 : Math.max(pctStock, 8)}%` }}
+                            />
+                          </span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+                {visibles.length > POR_PAGINA_FICHAS && (
+                  <div className="panel panel--paginacion">
+                    <Paginacion pagina={pagina} limite={POR_PAGINA_FICHAS} total={visibles.length} alCambiar={setPagina} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <Panel>
+                <Vacio icono={LuApple} titulo="No hay productos con estos filtros">Cambia la búsqueda o los filtros de arriba.</Vacio>
+              </Panel>
+            )
+          )}
+
+          {datos && vista === 'tabla' && (
+            <Panel>
+              <Tabla
+                etiqueta="Productos"
+                clave="codigo"
+                cargando={cargando}
+                filas={visibles}
+                alAbrir={(p) => setDetalle(p)}
+                ordenInicial={{ clave: 'descripcion', asc: true }}
+                porPagina={12}
+                columnas={[
+                  {
+                    clave: 'descripcion', titulo: 'Producto', ordenable: true,
+                    render: (p) => (
+                      <span className="celda-doble">
+                        <span>{capitalizar(p.descripcion)}</span>
+                        <span className="celda-doble__detalle">Código {p.codigo}, {p.categoria}</span>
+                      </span>
+                    ),
+                  },
+                  {
+                    clave: 'existencia', titulo: 'Existencia', ordenable: true, alinear: 'der',
+                    render: (p) => <span className="numeros">{cantidad(p.existencia, p.unidadMedida)}</span>,
+                  },
+                  { clave: 'estado', titulo: 'Estado', render: (p) => <InsigniaStock producto={p} umbral={umbral} /> },
+                  { clave: 'precioVenta', titulo: 'Precio', ordenable: true, alinear: 'der', render: (p) => <strong className="numeros">{moneda(p.precioVenta)}</strong> },
+                  {
+                    clave: 'margen', titulo: 'Margen', ordenable: true, alinear: 'der', valorOrden: margen,
+                    render: (p) => <span className="numeros texto-2">{porcentaje(margen(p), 0)}</span>,
+                  },
+                  ...(puedeEditar ? [{
+                    clave: 'acciones', titulo: <span className="solo-lectores">Acciones</span>, alinear: 'der',
+                    render: (p) => <BotonIcono icono={LuPencil} etiqueta={`Editar ${p.descripcion}`} onClick={() => setEditando(p)} />,
+                  }] : []),
+                ]}
+                vacio={<Vacio icono={LuApple} titulo="No hay productos con estos filtros">Cambia la búsqueda o los filtros de arriba.</Vacio>}
+              />
+            </Panel>
+          )}
+        </div>
+
+        <aside className="agenda-lateral" aria-label="Control de frescura, recordatorios y notas">
+          {/* 1. MONITOR DE FRESCURA / MERMA Y STOCK */}
+          <section className="panel glass-card lujo-brillo agenda-card">
+            <header className="agenda-card__cabecera">
+              <div className="agenda-card__titulo-bloque">
+                <span className="agenda-card__icono agenda-card__icono--aviso" aria-hidden="true"><LuHourglass /></span>
+                <div>
+                  <h2>Frescura y alertas</h2>
+                  <p className="agenda-card__sub">Perecederos con menor vida útil, riesgo de merma y stock bajo.</p>
+                </div>
+              </div>
+            </header>
+
+            <div className="agenda-filtros" role="tablist" aria-label="Vista de alertas de productos">
+              {[
+                { id: 'caducar', etiqueta: porCaducar.length ? `Por caducar (${porCaducar.length})` : 'Prioritarios' },
+                { id: 'stock', etiqueta: `Stock bajo (${stockCritico.length})` },
+                { id: 'margen', etiqueta: 'Mejor margen' },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tabMonitor === t.id}
+                  className={`agenda-tab ${tabMonitor === t.id ? 'agenda-tab--activo' : ''}`}
+                  onClick={() => setTabMonitor(t.id)}
+                >
+                  {t.etiqueta}
+                </button>
+              ))}
+            </div>
+
+            {listaMonitor.length ? (
+              <ul className="agenda-rapidos">
+                {listaMonitor.map((item) => (
+                  <li key={item.codigo} className="agenda-rapido">
+                    <button
+                      type="button"
+                      className="agenda-rapido__info"
+                      onClick={() => item.raw && setDetalle(item.raw)}
+                    >
+                      <Monograma
+                        texto={item.nombre}
+                        tono={item.raw ? tonoCategoria(item.raw.categoria) : 'oro'}
+                        icono={item.raw ? iconoCategoria(item.raw.categoria) : LuApple}
+                      />
+                      <span className="agenda-rapido__texto">
+                        <span className="agenda-rapido__nombre">{item.nombre}</span>
+                        <span className="agenda-rapido__meta">{item.sub}</span>
+                      </span>
+                    </button>
+                    <div className="agenda-rapido__btns">
+                      <Insignia tono={item.badge.tono} icono={false}>{item.badge.texto}</Insignia>
+                      <button
+                        type="button"
+                        className="agenda-icon-btn agenda-icon-btn--oro"
+                        title="Agendar revisión"
+                        aria-label={`Agendar revisión de ${item.nombre}`}
+                        onClick={() => setParaAgendar({ id: item.codigo, nombre: `${item.nombre} (#${item.codigo})`, motivoSugerido: item.motivo })}
+                      >
+                        <LuBellPlus aria-hidden="true" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="agenda-vacio__texto">No hay alertas pendientes en esta categoría.</p>
+            )}
+          </section>
+
+          {/* 2. RECORDATORIOS DE INVENTARIO */}
+          <PanelRecordatorios
+            clave="productos"
+            titulo="Recordatorios de inventario"
+            subtituloSingular="revisión pendiente"
+            subtituloPlural="revisiones pendientes"
+            etiquetaEntidad="producto"
+            placeholderMotivo="Ej. Revisar frescura, ajustar precio o hacer conteo físico"
+            textoVacio="Agenda revisiones de frescura, conteos o cambios de precio desde aquí o desde cualquier ficha."
+            opciones={opcionesRecordatorio}
+            preseleccion={paraAgendar}
+            alConsumirPreseleccion={() => setParaAgendar(null)}
+            avisar={avisar}
           />
-        </Panel>
-      )}
+
+          {/* 3. NOTAS RÁPIDAS DE BODEGA */}
+          <PanelNotas
+            clave="productos"
+            titulo="Notas de bodega y precios"
+            subtitulo="Mermas detectadas, precios de central o pendientes de anaquel."
+            placeholder="Ej. Llegó fresa muy madura, promover salida hoy…"
+          />
+        </aside>
+      </div>
 
       <InspectorProducto
         producto={detalle}

@@ -85,7 +85,7 @@ router.post('/login', ruta(async (req, res) => {
 
   if (!perfil.rol) {
     await pool.end().catch(() => {});
-    throw new HttpError(403, 'Tu usuario de PostgreSQL no tiene un rol de Harvest JAM (administrador, gerente, cajero, comprador, admin_clientes o contador).');
+    throw new HttpError(403, 'Tu cuenta no tiene un rol asignado en Harvest JAM.');
   }
 
   limpiarIntentos(claveIntentos);

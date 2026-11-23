@@ -34,6 +34,89 @@ const ETIQUETA_TIPO = {
   CARGADO: { texto: 'Cargado', tono: 'ok' },
 };
 
+const ETIQUETA_CAMPO = {
+  _renglon: 'Renglón del archivo',
+  codigo: 'Código de producto',
+  descripcion: 'Producto',
+  producto: 'Producto',
+  categoria: 'Categoría',
+  unidad_medida: 'Unidad de medida',
+  unidadMedida: 'Unidad de medida',
+  stock_minimo: 'Stock mínimo',
+  stockMinimo: 'Stock mínimo',
+  vida_util_dias: 'Vida útil (días)',
+  vidaUtilDias: 'Vida útil (días)',
+  dias_entrega: 'Días de entrega',
+  diasEntrega: 'Días de entrega',
+  entrega_imputada: 'Entrega imputada',
+  entregaImputada: 'Entrega imputada',
+  id_p: 'ID de proveedor',
+  idProveedor: 'ID de proveedor',
+  fecha_actualizacion: 'Fecha de actualización',
+  fechaActualizacion: 'Fecha de actualización',
+  folio_v: 'Folio de venta',
+  folioV: 'Folio de venta',
+  fecha: 'Fecha',
+  cantidad: 'Cantidad',
+  precio_unitario: 'Precio unitario',
+  precioUnitario: 'Precio unitario',
+  costo_unitario: 'Costo unitario',
+  costoUnitario: 'Costo unitario',
+  importe: 'Importe',
+  margen: 'Margen',
+  ventasLeidas: 'Ventas leídas',
+  csvParametros: 'Filas en CSV parámetros',
+  csvEntregas: 'Filas en CSV entregas',
+  productosCargados: 'Productos cargados',
+  ventasCargadas: 'Ventas cargadas',
+  fechaCorte: 'Fecha de corte',
+  'folio_v,codigo': 'Folio y producto',
+  'etl.resumen_producto': 'Resumen analítico',
+};
+
+function etiquetaCampo(clave) {
+  if (!clave) return '—';
+  if (ETIQUETA_CAMPO[clave]) return ETIQUETA_CAMPO[clave];
+  const limpio = String(clave).replace(/^_+/, '').replace(/_/g, ' ');
+  return limpio.charAt(0).toUpperCase() + limpio.slice(1);
+}
+
+function formatearValorCampo(valor) {
+  if (valor === null || valor === undefined || valor === '') return '(vacío)';
+  if (typeof valor === 'boolean') return valor ? 'Sí' : 'No';
+  return String(valor);
+}
+
+function FichaRegistro({ datos, campoResaltado, mensajeVacio, esRechazo = false }) {
+  if (!datos || typeof datos !== 'object' || Object.keys(datos).length === 0) {
+    return (
+      <div className={`etl-ficha etl-ficha--vacia ${esRechazo ? 'etl-ficha--rechazo' : ''}`}>
+        <p>{mensajeVacio}</p>
+      </div>
+    );
+  }
+
+  const entradas = Object.entries(datos);
+  const campoObjetivo = String(campoResaltado ?? '').toLowerCase();
+
+  return (
+    <dl className="etl-ficha">
+      {entradas.map(([clave, valor]) => {
+        const resaltado = campoObjetivo && (
+          clave.toLowerCase() === campoObjetivo
+          || etiquetaCampo(clave).toLowerCase() === etiquetaCampo(campoResaltado).toLowerCase()
+        );
+        return (
+          <div key={clave} className={`etl-ficha__fila ${resaltado ? 'etl-ficha__fila--resaltada' : ''}`}>
+            <dt>{etiquetaCampo(clave)}</dt>
+            <dd>{formatearValorCampo(valor)}</dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
 function ModalDetalleCambio({ cambio, alCerrar }) {
   return (
     <Modal
@@ -49,7 +132,7 @@ function ModalDetalleCambio({ cambio, alCerrar }) {
           <dl className="datos-en-linea">
             <div><dt>Entidad</dt><dd>{ETIQUETA_ENTIDAD[cambio.entidad] ?? cambio.entidad}</dd></div>
             <div><dt>Clave</dt><dd className="codigo-mono">{cambio.clave}</dd></div>
-            <div><dt>Campo</dt><dd className="codigo-mono">{cambio.campo}</dd></div>
+            <div><dt>Campo revisado</dt><dd>{etiquetaCampo(cambio.campo)}</dd></div>
             <div>
               <dt>Resultado</dt>
               <dd>
@@ -76,12 +159,25 @@ function ModalDetalleCambio({ cambio, alCerrar }) {
 
           <div className="etl-json-grid">
             <div>
-              <h3 className="subtitulo">Dato original (crudo)</h3>
-              <pre className="etl-json">{cambio.datoAntes ? JSON.stringify(cambio.datoAntes, null, 2) : 'Sin registro crudo'}</pre>
+              <h3 className="subtitulo">Información recibida</h3>
+              <FichaRegistro
+                datos={cambio.datoAntes}
+                campoResaltado={cambio.campo}
+                mensajeVacio="Sin registro original asociado."
+              />
             </div>
             <div>
-              <h3 className="subtitulo">Dato resultante</h3>
-              <pre className="etl-json">{cambio.datoDespues ? JSON.stringify(cambio.datoDespues, null, 2) : 'Enviado a cuarentena (no cargado)'}</pre>
+              <h3 className="subtitulo">Resultado guardado</h3>
+              <FichaRegistro
+                datos={cambio.datoDespues}
+                campoResaltado={cambio.campo}
+                esRechazo={cambio.tipo === 'RECHAZADO'}
+                mensajeVacio={
+                  cambio.tipo === 'RECHAZADO'
+                    ? 'Enviado a cuarentena: no se cargó a las tablas limpias ni afectó los cálculos.'
+                    : `Se aplicó el ajuste en «${etiquetaCampo(cambio.campo)}» y el registro continuó su procesamiento.`
+                }
+              />
             </div>
           </div>
         </div>
