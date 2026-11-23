@@ -1110,20 +1110,20 @@
         <div class="journey">
           <div class="station station--origen">
             <div class="station__head">
-              <h3 class="station__title">Estación 1 · Punto de partida (Solo lectura — nunca se modifican)</h3>
-              <span class="tag tag--neutral">5 fuentes de entrada</span>
+              <h3 class="station__title">Estación 1 · Punto de partida (Base viva editable + CSVs de respaldo)</h3>
+              <span class="tag tag--neutral">Solo lectura para el ETL</span>
             </div>
             <p>El ETL toma una fotografía de los datos actuales sin alterar jamás la caja registradora ni los archivos:</p>
             <div class="table-pills">
-              <span class="table-pill">fruteria.producto</span>
+              <span class="table-pill">fruteria.producto (+ stock_minimo, vida_util_dias)</span>
               <span class="table-pill">fruteria.venta + detalle_venta</span>
-              <span class="table-pill">fruteria.producto_proveedor + proveedor</span>
+              <span class="table-pill">fruteria.producto_proveedor (+ dias_entrega) + proveedor</span>
               <span class="table-pill table-pill--gold">parametros_producto.csv</span>
               <span class="table-pill table-pill--gold">tiempos_entrega_proveedor.csv</span>
             </div>
             <p style="font-size:0.86rem;margin-top:6px;">
-              De <code>fruteria.*</code> saca existencias, precios, ventas reales y proveedores. De los dos CSV externos saca
-              el stock mínimo, los días de vida útil y cuántos días tarda cada proveedor en surtir.
+              De <code>fruteria.*</code> saca existencias, precios, ventas reales, proveedores y <strong>los parámetros reales que el usuario ya capturó o editó en <code>/productos</code></strong> (stock mínimo, vida útil y días de entrega por proveedor).
+              Para productos que aún tienen esos campos vacíos en la base (y para demostrar limpieza y cuarentena), el ETL lee además los dos archivos CSV externos en <code>datos-externos/</code>.
             </p>
           </div>
 
@@ -1185,16 +1185,20 @@
 
           <div class="station station--limpia">
             <div class="station__head">
-              <h3 class="station__title">Estación 4 · Carga limpia en bloque (las 3 tablas de datos listos)</h3>
+              <h3 class="station__title">Estación 4 · Carga limpia en bloque (con prioridad en 3 niveles)</h3>
               <span class="tag tag--teal">Todo o nada · Cero duplicados</span>
             </div>
             <p style="font-size:0.88rem;">
-              Dentro de una sola transacción segura, se vacían las versiones viejas de estas 3 tablas y se llenan con los datos recién depurados:
+              Antes de guardar, el ETL resuelve los parámetros de cada producto respetando una <strong>regla de prioridad clara</strong> para que los registros nuevos y futuros análisis funcionen siempre:
+              <strong>1.º dato real guardado en la base</strong> (editado en <code>/productos</code>) →
+              <strong>2.º dato limpio del CSV externo</strong> (si en BD aún está vacío) →
+              <strong>3.º estándar conservador</strong> (<code>10</code> mínimo, <code>7 días</code> de vida útil y <code>2 días</code> de entrega con aviso <em>Entrega imputada</em>).
+              Luego, en una sola transacción segura, vacía las versiones viejas de estas 3 tablas y guarda el lote recién depurado:
             </p>
             <div class="grid-3" style="margin:10px 0 0;">
               <div class="card" style="background:#fff;">
                 <div class="card__title"><code>1. etl.parametros_producto</code></div>
-                <p style="font-size:0.84rem;">Guarda los datos externos ya limpios por producto: stock mínimo, vida útil, días de entrega, si fue imputado y proveedor principal.</p>
+                <p style="font-size:0.84rem;">Guarda los parámetros ya resueltos y limpios por producto: stock mínimo, vida útil, días de entrega, si fue imputado, proveedor principal y <strong>fuente exacta</strong> (<code>fruteria (BD)</code>, <code>fruteria + csv</code> o <code>datos-externos/*.csv</code>).</p>
               </div>
               <div class="card" style="background:#fff;">
                 <div class="card__title"><code>2. etl.venta_limpia</code></div>
@@ -1211,8 +1215,8 @@
 
           <div class="station station--destino">
             <div class="station__head">
-              <h3 class="station__title">Estación 5 · Cierre y salida en pantalla</h3>
-              <span class="tag tag--accent">Listo para el usuario</span>
+              <h3 class="station__title">Estación 5 · Cierre y salida conectada en el ecosistema</h3>
+              <span class="tag tag--accent">3 pantallas alimentadas</span>
             </div>
             <div class="table-pills">
               <span class="table-pill">etl.corridas (ok / con_rechazos)</span>
@@ -1220,10 +1224,10 @@
               <span class="table-pill table-pill--ok">etl.dss_corridas + dss_recomendaciones</span>
             </div>
             <p style="font-size:0.88rem;margin-top:6px;">
-              Se cierra <code>etl.corridas</code> con los totales finales y la fecha de corte. Desde ese instante:
-              la pantalla <strong><code>/etl</code></strong> lee <code>etl.corridas</code> y <code>etl.cambios</code> para mostrar todo lo que pasó;
-              y la pantalla <strong><code>/decisiones</code></strong> lee únicamente <strong><code>etl.resumen_producto</code></strong> junto con los pesos de <code>etl.dss_parametros</code>.
-              Si el comprador pulsa <em>“Guardar foto DSS”</em>, esa decisión se guarda en <code>etl.dss_corridas</code> y <code>etl.dss_recomendaciones</code>.
+              Se cierra <code>etl.corridas</code> con los totales finales y la fecha de corte. Desde ese instante los datos limpios alimentan todo el ecosistema:
+              <strong>(1) <code>/etl</code></strong> muestra la última corrida automáticamente sin aglomerar registros, con <strong>calendario de días marcados en dorado</strong> y fichas legibles en español;
+              <strong>(2) <code>/decisiones</code></strong> lee <strong><code>etl.resumen_producto</code></strong> + <code>etl.dss_parametros</code> para priorizar compras, simular 4 escenarios y guardar fotos en <code>etl.dss_corridas</code> y <code>etl.dss_recomendaciones</code>;
+              <strong>(3) <code>/productos</code></strong> consume el análisis DSS en su panel lateral <strong>“Frescura y alertas”</strong> para señalar frutas <em>Por caducar</em> dentro del mismo catálogo donde también se editan vida útil, mínimo y días de entrega.
             </p>
           </div>
         </div>
@@ -1277,10 +1281,10 @@
               <span class="tag tag--accent">Control y transparencia</span>
             </div>
             <ul class="clean">
-              <li>Tiene un botón <strong>“Ejecutar ETL”</strong> para actualizar todos los datos reales del negocio.</li>
+              <li>Tiene un botón <strong>“Ejecutar ETL”</strong> para actualizar todos los datos reales del negocio y enfocar automáticamente esa nueva corrida (sin mezclar ni aglomerar corridas pasadas).</li>
               <li>Tiene un botón <strong>“Probar datos inválidos”</strong> que corre un paquete de prueba con errores creados a propósito para demostrar en vivo cómo limpia y manda a cuarentena <strong>sin ensuciar los datos reales</strong>.</li>
-              <li>Muestra 4 tarjetas resumen: cuántos datos se leyeron, cuántos se limpiaron/imputaron, cuántos se cargaron y cuántos se fueron a cuarentena.</li>
-              <li>Tiene una tabla estilo Auditoría con filtros y el comparativo exacto <strong>Antes → Después</strong>; al dar clic en una fila se ve el detalle completo.</li>
+              <li>Incluye un <strong>calendario interactivo</strong> (idéntico al de Ventas y Compras) que marca con <strong>punto dorado</strong> los días con corridas, además de selector por corrida, entidad, tipo y buscador.</li>
+              <li>Muestra 4 tarjetas resumen y una tabla <strong>Antes → Después</strong>; al dar clic en una fila abre una <strong>ficha clara en español</strong> (con el campo afectado resaltado y panel de cuarentena cuando aplica, sin mostrar código JSON técnico).</li>
             </ul>
           </div>
 
@@ -1294,6 +1298,23 @@
               <li>Clasifica cada producto en: <strong>Emergencia (Crítica)</strong>, <strong>Alta</strong>, <strong>Media</strong>, <strong>Baja</strong>, <strong>Sobreabastecido (No comprar por merma)</strong> o <strong>Sin datos suficientes</strong>.</li>
               <li>Calcula <strong>cuánto comprar</strong> cuidando nunca pedir más de lo que se alcanza a vender antes de que la fruta se eche a perder.</li>
               <li>Permite comparar <strong>4 escenarios</strong> (normal, demanda +20 %, demanda −20 %, retraso de proveedor +2 días), poner un <strong>tope de presupuesto</strong>, ver el botón <strong>“¿Por qué?”</strong> en cada producto y <strong>guardar una foto</strong> de la decisión para respaldo.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card card--solution" style="margin-top: 14px;">
+          <div class="card__title">
+            <span>C. Ecosistema completo conectado al resto del sistema</span>
+            <span class="tag tag--blue">Ciclo cerrado operativo + analítico</span>
+          </div>
+          <div class="grid-2" style="margin: 8px 0 0;">
+            <ul class="clean">
+              <li><strong>Parámetros editables en <code>/productos</code> y visibles en <code>/proveedores</code>:</strong> al crear o editar un producto ya se pueden capturar su <strong>stock mínimo</strong>, <strong>vida útil (días)</strong> y <strong>días de entrega por cada proveedor</strong> directo en PostgreSQL; el siguiente ETL toma esos datos reales como primera prioridad.</li>
+              <li><strong>Monitor “Frescura y alertas” dentro de <code>/productos</code>:</strong> el catálogo consulta el análisis DSS para mostrar en el panel derecho alertas de productos <em>Por caducar</em>, <em>Stock bajo</em> y <em>Mejor margen</em> sin salir del inventario.</li>
+            </ul>
+            <ul class="clean">
+              <li><strong>Calendarios y espacios de trabajo unificados:</strong> <code>/ventas</code>, <code>/compras</code> y <code>/etl</code> comparten el calendario con puntos dorados en días con actividad; los 4 catálogos (<code>/productos</code>, <code>/proveedores</code>, <code>/clientes</code>, <code>/empleados</code>) incorporan panel lateral con recordatorios y notas rápidas, y <code>/reportes</code> organiza sus rankings y tabla completa en filas balanceadas a ancho completo.</li>
+              <li><strong>Privacidad en <code>/empleados</code>:</strong> se ocultaron y protegieron los nombres de usuario internos de PostgreSQL para que la interfaz solo muestre información operativa del personal.</li>
             </ul>
           </div>
         </div>
@@ -1404,16 +1425,16 @@
         <h3>1. Base de datos y hojas externas (de dónde salen y dónde se guardan los datos)</h3>
         <div class="grid-3">
           <div class="card card--file card--file-db">
-            <div class="card__title"><code>base-de-datos/07_dss.sql</code></div>
-            <p>Crea la zona aparte (<code>etl</code>) con sus 9 tablas para corridas, cambios, cuarentena, resúmenes limpios, parámetros y fotos de decisión, más los permisos por rol.</p>
+            <div class="card__title"><code>base-de-datos/01_tablas.sql</code> y <code>07_dss.sql</code></div>
+            <p>Agregan de forma segura las columnas editables <code>stock_minimo</code>, <code>vida_util_dias</code> (en <code>fruteria.producto</code>) y <code>dias_entrega</code> (en <code>producto_proveedor</code>), y crean la zona analítica aislada (<code>etl</code>) con sus 9 tablas, índices y permisos por rol.</p>
           </div>
           <div class="card card--file card--file-db">
             <div class="card__title"><code>datos-externos/parametros_producto.csv</code></div>
-            <p>Hoja externa con el stock mínimo y los días de vida útil de cada fruta y verdura (incluye errores y duplicados a propósito para probar la limpieza).</p>
+            <p>Hoja externa de respaldo con el stock mínimo y los días de vida útil de cada fruta y verdura (se usa si el dato aún está vacío en la BD e incluye errores y duplicados a propósito para probar la limpieza).</p>
           </div>
           <div class="card card--file card--file-db">
             <div class="card__title"><code>datos-externos/tiempos_entrega_proveedor.csv</code></div>
-            <p>Hoja externa con los días que tarda cada proveedor en surtir cada producto (incluye huecos vacíos para probar el llenado automático y errores para cuarentena).</p>
+            <p>Hoja externa de respaldo con los días que tarda cada proveedor en surtir cada producto (incluye huecos vacíos para probar la imputación <code>I1</code> y errores para cuarentena).</p>
           </div>
         </div>
 
@@ -1456,12 +1477,12 @@
         <h3>4. Puentes entre el servidor, la base de datos y las pantallas</h3>
         <div class="grid-2">
           <div class="card card--file card--file-db">
-            <div class="card__title"><code>server/src/dao/dss.js</code></div>
-            <p>Contiene las consultas a la base de datos para leer corridas, filtrar cambios del ETL, traer los productos limpios y guardar las fotos de decisión.</p>
+            <div class="card__title"><code>server/src/dao/dss.js</code> (y ajustes en <code>dao/productos.js</code>, <code>proveedores.js</code>, <code>ventas.js</code>, <code>compras.js</code>, <code>empleados.js</code>)</div>
+            <p>Consultas SQL para leer corridas y días del calendario ETL, filtrar cambios, traer resúmenes limpios, guardar fotos DSS, guardar <code>stock_minimo</code>/<code>vida_util_dias</code>/<code>dias_entrega</code> en BD y proteger credenciales internas de empleados.</p>
           </div>
           <div class="card card--file card--file-etl">
-            <div class="card__title"><code>server/src/rutas/etl.js</code> y <code>rutas/dss.js</code></div>
-            <p>Son las direcciones web internas (API) que conectan la pantalla con el servidor para consultar cambios, lanzar el ETL, pedir el análisis y guardar corridas DSS.</p>
+            <div class="card__title"><code>server/src/rutas/etl.js</code> y <code>rutas/dss.js</code> (+ <code>/dias</code> en <code>ventas.js</code> y <code>compras.js</code>)</div>
+            <p>Endpoints API que conectan las pantallas con el servidor para consultar días con corridas, filtrar por fecha, lanzar el ETL, pedir el análisis DSS y guardar fotos de decisión.</p>
           </div>
           <div class="card card--file">
             <div class="card__title"><code>server/scripts/init-dss.js</code> (y ajustes en <code>permisos.js</code>, <code>app.js</code>, <code>setup-db.js</code>, <code>package.json</code>)</div>
@@ -1477,19 +1498,19 @@
         <div class="grid-2">
           <div class="card card--file card--file-ui">
             <div class="card__title"><code>client/src/paginas/BitacoraEtl.jsx</code></div>
-            <p>La pantalla <code>/etl</code>: muestra los botones para correr o probar el ETL, las tarjetas de resumen, los filtros, la tabla <em>Antes → Después</em> y la ventana con el detalle del dato.</p>
+            <p>La pantalla <code>/etl</code>: botones para correr o probar el ETL, calendario con días marcados en dorado, auto-selección de la última corrida, tabla <em>Antes → Después</em> y fichas de detalle legibles en español.</p>
           </div>
           <div class="card card--file card--file-ui">
             <div class="card__title"><code>client/src/paginas/Decisiones.jsx</code></div>
-            <p>La pantalla <code>/decisiones</code>: muestra el aviso de revisión humana, KPIs, los 4 escenarios, los controles deslizables, la tabla priorizada, el modal <em>“¿Por qué?”</em> y el historial de fotos.</p>
+            <p>La pantalla <code>/decisiones</code>: aviso de revisión humana, KPIs, 4 escenarios, controles deslizables, tabla priorizada, modal <em>“¿Por qué?”</em> e historial de fotos.</p>
           </div>
           <div class="card card--file card--file-ui">
-            <div class="card__title"><code>App.jsx</code>, <code>Layout.jsx</code> y <code>pantallas.css</code></div>
-            <p>Conectan las dos pantallas nuevas al menú lateral (solo visibles para los roles con permiso) y les dan el mismo diseño visual limpio del resto de Harvest JAM.</p>
+            <div class="card__title"><code>CalendarioFecha.jsx</code> y <code>AgendaContactos.jsx</code></div>
+            <p>Componentes compartidos: calendario interactivo con días marcados (usado en <code>/ventas</code>, <code>/compras</code> y <code>/etl</code>) y paneles de recordatorios/notas rápidas integrados en los 4 catálogos.</p>
           </div>
           <div class="card card--file card--file-ui">
-            <div class="card__title"><code>docs/MANUAL_FUNCIONAMIENTO_ETL.md</code></div>
-            <p>Guía corta de apoyo para el equipo con el glosario del ETL, ejemplos y respuestas rápidas.</p>
+            <div class="card__title"><code>Productos.jsx</code>, <code>Proveedores.jsx</code>, <code>Empleados.jsx</code>, <code>Reportes.jsx</code> y CSS</div>
+            <p>Edición de vida útil, mínimo y días de entrega por proveedor; panel <em>Frescura y alertas</em> alimentado por el DSS; layout a ancho completo balanceado y ocultamiento de usuarios de PostgreSQL.</p>
           </div>
         </div>
       </article>
@@ -1555,22 +1576,22 @@
               <tr>
                 <td><strong>Base de datos</strong></td>
                 <td>Esquema operativo <code>fruteria</code> (13 tablas, 18 funciones, 15 triggers de stock y auditoría, roles base).</td>
-                <td>Esquema analítico aislado <code>etl</code> (<code>07_dss.sql</code>) con 9 tablas, 6 índices y permisos específicos por rol.</td>
+                <td>Esquema analítico aislado <code>etl</code> (<code>07_dss.sql</code>) con 9 tablas, 6 índices y permisos por rol, más 3 columnas opcionales editables en <code>fruteria</code> (<code>stock_minimo</code>, <code>vida_util_dias</code> y <code>dias_entrega</code>) para alimentar futuros análisis.</td>
               </tr>
               <tr>
                 <td><strong>Fuentes externas</strong></td>
                 <td>No existían parámetros externos de inventario ni entregas.</td>
-                <td>2 archivos CSV en <code>datos-externos/</code> (<code>parametros_producto.csv</code> y <code>tiempos_entrega_proveedor.csv</code>) con anomalías controladas.</td>
+                <td>Modelo híbrido: datos reales editables en <code>/productos</code> con prioridad 1, respaldados por 2 archivos CSV en <code>datos-externos/</code> (<code>parametros_producto.csv</code> y <code>tiempos_entrega_proveedor.csv</code>) con anomalías controladas.</td>
               </tr>
               <tr>
                 <td><strong>Servidor (Backend)</strong></td>
                 <td>Rutas CRUD, autenticación, reportes descriptivos y auditoría.</td>
-                <td>Motor ETL (<code>server/src/etl/*</code>), motor DSS (<code>server/src/dss/*</code>), DAO analítico (<code>dao/dss.js</code>), endpoints <code>/api/etl</code> y <code>/api/dss</code>, permisos nuevos y 8 pruebas unitarias.</td>
+                <td>Motor ETL (<code>server/src/etl/*</code>), motor DSS (<code>server/src/dss/*</code>), DAO analítico (<code>dao/dss.js</code>), endpoints <code>/api/etl</code> (incluyendo <code>/dias</code> y filtro por fecha) y <code>/api/dss</code>, guardado de parámetros reales por producto/proveedor, permisos nuevos y 8 pruebas unitarias.</td>
               </tr>
               <tr>
                 <td><strong>Interfaz (Frontend)</strong></td>
                 <td>Punto de venta, ventas, compras, catálogos, reportes y auditoría.</td>
-                <td>Pantalla <strong>Bitácora ETL</strong> (<code>/etl</code>) y pantalla <strong>Decisiones</strong> (<code>/decisiones</code>) con 4 escenarios, presupuesto, modal <em>“¿Por qué?”</em> e historial de fotos.</td>
+                <td><strong>Bitácora ETL</strong> (<code>/etl</code> con calendario y fichas legibles en español), <strong>Decisiones</strong> (<code>/decisiones</code> con 4 escenarios, presupuesto, <em>“¿Por qué?”</em> y fotos), edición de vida útil/mínimo/entrega en <code>/productos</code> + panel <em>Frescura y alertas</em>, calendarios en <code>/ventas</code> y <code>/compras</code>, espacios de trabajo con recordatorios/notas y <code>/reportes</code> balanceado.</td>
               </tr>
             </tbody>
           </table>
@@ -1609,13 +1630,13 @@
               </tr>
               <tr>
                 <td><strong>2. Mostrar datos de entrada</strong></td>
-                <td>Mostrar <code>/productos</code> y abrir <code>datos-externos/*.csv</code>.</td>
-                <td>Explicar que se combinan ventas/stock del POS con dos hojas externas simuladas (stock mínimo, vida útil y días de entrega) que traen errores reales de captura.</td>
+                <td>Mostrar <code>/productos</code> (con <em>Stock mínimo</em>, <em>Vida útil</em> y <em>Días de entrega</em> editables) y abrir <code>datos-externos/*.csv</code>.</td>
+                <td>Explicar la prioridad en 3 niveles: el ETL toma primero los parámetros reales guardados en la BD (<code>/productos</code>), luego el respaldo limpio de los CSV simulados (con errores controlados) y por último el estándar seguro.</td>
               </tr>
               <tr>
                 <td><strong>3. Explicar una transformación del ETL</strong></td>
-                <td>Ir a <code>/etl</code> → pulsar <strong>“Ejecutar ETL”</strong> → filtrar por <em>Limpiados</em> o <em>Imputados</em>.</td>
-                <td>Abrir una fila y mostrar el <strong>Antes → Después</strong> (ej. <code>"  manzana   ROJA "</code> → <code>"Manzana roja"</code>, <code>"12,5"</code> → <code>12.5</code>, o entrega vacía imputada a <code>2 días</code> con regla <code>I1</code>).</td>
+                <td>Ir a <code>/etl</code> → pulsar <strong>“Ejecutar ETL”</strong> (enfoca sola la última corrida; mostrar el calendario con puntos dorados) → filtrar por <em>Limpiados</em> o <em>Imputados</em>.</td>
+                <td>Abrir una fila y mostrar la ficha legible en español con el <strong>Antes → Después</strong> (ej. <code>"  manzana   ROJA "</code> → <code>"Manzana roja"</code>, <code>"12,5"</code> → <code>12.5</code>, o entrega vacía imputada a <code>2 días</code> con regla <code>I1</code>).</td>
               </tr>
               <tr>
                 <td><strong>★ Caso de dato inválido (obligatorio)</strong></td>
@@ -1669,7 +1690,7 @@
             <div class="card__title">Limitaciones y posibles sesgos actuales</div>
             <ul class="clean">
               <li><strong>Demanda promedio plana (ventana de 28 días):</strong> si hoy llega un día festivo o una onda de calor que dispara la venta de golpe, el promedio tarda en reflejarlo (por eso se incluyó el simulador <code>Demanda +20 %</code>).</li>
-              <li><strong>Datos externos simulados:</strong> los tiempos de entrega, vida útil y stock mínimo vienen de CSV simulados en <code>datos-externos/</code>; en operación real deben mantenerse actualizados por el comprador.</li>
+              <li><strong>Respaldo inicial simulado en CSV:</strong> aunque los productos nuevos y editados ya guardan su <code>stock_minimo</code>, <code>vida_util_dias</code> y <code>dias_entrega</code> reales en PostgreSQL desde <code>/productos</code>, los registros que aún no se personalicen toman el respaldo de los CSV simulados en <code>datos-externos/</code>.</li>
               <li><strong>Sesgo por imputación (<code>I1</code>):</strong> cuando un proveedor no tiene plazo registrado se asumen 2 días; si en realidad tarda 5, podría subestimar la urgencia (por eso se marca visiblemente <em>“Entrega imputada”</em>).</li>
               <li><strong>Sin variación estacional ni precios dinámicos:</strong> el modelo usa el último costo de compra y no predice cambios bruscos de precio en central de abastos.</li>
             </ul>
@@ -1791,9 +1812,14 @@ PostgreSQL (localhost:5432 · BD "TBD")
         </div>
 
         <p>
-          Todo el módulo nuevo vive aislado en el esquema <code>etl</code> dentro de la misma base <code>TBD</code>.
-          El script <code>07_dss.sql</code> es <strong>idempotente</strong> (usa <code>CREATE SCHEMA/TABLE/INDEX IF NOT EXISTS</code>
-          y <code>ON CONFLICT DO NOTHING</code>), por lo que puede aplicarse sobre una base existente mediante
+          Todo el módulo analítico vive aislado en el esquema <code>etl</code> dentro de la misma base <code>TBD</code>.
+          Además, para que los productos nuevos y futuras corridas del ETL no dependan únicamente de archivos CSV, tanto
+          <code>01_tablas.sql</code> como <code>07_dss.sql</code> incorporan de forma idempotente
+          (<code>ALTER TABLE ... ADD COLUMN IF NOT EXISTS</code>) tres columnas opcionales con validaciones <code>CHECK</code>
+          en el esquema operativo: <code>fruteria.producto.stock_minimo</code> (<code>&gt;= 0</code>),
+          <code>fruteria.producto.vida_util_dias</code> (<code>1..60</code>) y
+          <code>fruteria.producto_proveedor.dias_entrega</code> (<code>0..30</code>).
+          El script <code>07_dss.sql</code> puede aplicarse sobre cualquier base existente mediante
           <code>npm run dss:init</code> sin pérdida de datos operativos.
         </p>
 
@@ -1972,9 +1998,9 @@ PostgreSQL (localhost:5432 · BD "TBD")
               <tr>
                 <td><strong>2</strong></td>
                 <td><code>fruteria.producto</code><br /><code>fruteria.producto_proveedor</code><br /><code>fruteria.proveedor</code></td>
-                <td><code>SELECT</code> de solo lectura + subconsulta del primer proveedor por <code>codigo</code></td>
+                <td><code>SELECT</code> de solo lectura trayendo <code>p.stock_minimo AS stock_minimo_bd</code>, <code>p.vida_util_dias AS vida_util_bd</code> y el primer proveedor con <code>pp.dias_entrega AS dias_entrega_bd</code></td>
                 <td>En memoria (<code>catalogoPorCodigo</code>, <code>codigosValidos</code>)</td>
-                <td>Llave: <code>codigo</code>. Define el universo válido contra el cual valida <code>V1</code>.</td>
+                <td>Llave: <code>codigo</code>. Define el universo válido para <code>V1</code> y aporta los parámetros reales editados en <code>/productos</code>.</td>
               </tr>
               <tr>
                 <td><strong>3</strong></td>
@@ -1992,10 +2018,10 @@ PostgreSQL (localhost:5432 · BD "TBD")
               </tr>
               <tr>
                 <td><strong>5</strong></td>
-                <td><code>catalogoPorCodigo</code> + <code>paramPorCodigo</code> + <code>entregaPorCodigo</code> + ventana 28d de <code>resVentas.limpios</code></td>
-                <td>Agregación por <code>codigo</code> en ventana <code>[fechaCorte − 27d .. fechaCorte]</code> + <code>calcularIndicadoresProducto()</code></td>
+                <td><code>catalogoPorCodigo</code> (BD) + <code>paramPorCodigo</code> / <code>entregaPorCodigo</code> (CSV) + ventana 28d de <code>resVentas.limpios</code></td>
+                <td>Resolución en 3 niveles (<strong>1° BD <code>fruteria.*</code> → 2° CSV limpio → 3° defaults <code>10 / 7d / 2d</code></strong>) + agregación <code>[fechaCorte − 27d .. fechaCorte]</code> + <code>calcularIndicadoresProducto()</code></td>
                 <td>En memoria (<code>resumenes[]</code>)</td>
-                <td>Calcula <code>demanda_diaria</code>, <code>dias_cobertura</code>, <code>rotacion</code>, <code>brecha_minimo</code>, <code>margen_entrega</code>, <code>margen_pct</code>, <code>riesgo_merma</code> y <code>datos_suficientes</code>.</td>
+                <td>Etiqueta <code>fuenteParam</code> (<code>fruteria (BD)</code>, <code>fruteria + csv</code> o <code>datos-externos/*.csv</code>), marca <code>entregaImputada = false</code> si viene de BD y calcula los 5 indicadores.</td>
               </tr>
               <tr>
                 <td><strong>6</strong></td>
@@ -2009,41 +2035,44 @@ PostgreSQL (localhost:5432 · BD "TBD")
                 <td><code>cambios[]</code> + <code>rechazos[]</code> + evento <code>LD-01</code></td>
                 <td><code>insertarCambiosYRechazos()</code> + <code>UPDATE etl.corridas SET estado = ...</code> + <code>COMMIT</code></td>
                 <td><code>etl.cambios</code><br /><code>etl.rechazos</code><br /><code>etl.corridas</code></td>
-                <td>FK <code>corrida_id</code> con <code>ON DELETE CASCADE</code>. Guarda <code>dato_original</code> y <code>dato_antes/despues</code> en <code>jsonb</code>.</td>
+                <td>FK <code>corrida_id</code> con <code>ON DELETE CASCADE</code>. Alimenta <code>/etl</code> (calendario <code>/api/etl/dias</code>, filtro por fecha/corrida y fichas legibles en español).</td>
               </tr>
               <tr>
                 <td><strong>8</strong></td>
                 <td><code>etl.resumen_producto</code><br /><code>etl.dss_parametros</code></td>
                 <td><code>GET /api/dss/analisis</code> → <code>evaluarReabastecimiento()</code> + <code>compararEscenarios()</code></td>
-                <td>UI <code>/decisiones</code><br />(y opcionalmente <code>etl.dss_corridas</code> + <code>etl.dss_recomendaciones</code>)</td>
+                <td>UI <code>/decisiones</code> + panel <em>Frescura y alertas</em> en <code>/productos</code><br />(y opcionalmente <code>etl.dss_corridas</code> + <code>etl.dss_recomendaciones</code>)</td>
                 <td>El DSS nunca toca <code>fruteria.*</code> ni <code>etl.rechazos</code>; solo consume datos limpios y versionados (<code>version='v1'</code>).</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <pre><code>FLUJO DE ESQUEMAS Y LLAVES (MODO COMPLETO)
+        <pre><code>ECOSISTEMA COMPLETO Y FLUJO DE ESQUEMAS (MODO COMPLETO)
 
-[fruteria.producto] ─────────┐
+Pantalla /productos (edita stock_minimo, vida_util_dias y dias_entrega por proveedor)
+        │  POST / PUT /api/productos
+        ▼
+[fruteria.producto] ─────────┐  (Prioridad 1: dato real en BD)
 [fruteria.producto_proveedor]┼──(codigo)──▶┐
 [fruteria.proveedor] ────────┘             │
 [fruteria.venta + detalle_venta] ─(folio_v,codigo)─▶ [reglas.js: L1–L4, I1, V1–V4]
-[parametros_producto.csv] ───(codigo)─────▶┤            │
-[tiempos_entrega_proveedor.csv] ─(codigo)─▶┘            ├──(inválidos V1–V4)──▶ [etl.rechazos] (CUARENTENA)
-                                                        ├──(todos los eventos)─▶ [etl.cambios] ──▶ Pantalla /etl
-                                                        │
+[parametros_producto.csv] ───(codigo)─────▶┤  (Prioridad 2: respaldo CSV)
+[tiempos_entrega_proveedor.csv] ─(codigo)─▶┘            │
+                                                        ├──(inválidos V1–V4)──▶ [etl.rechazos] (CUARENTENA)
+                                                        ├──(todos los eventos)─▶ [etl.cambios] + [etl.corridas]
+                                                        │                            └──▶ Pantalla /etl (calendario /api/etl/dias + fichas en español)
                             ┌──── BEGIN ... TRUNCATE + INSERT ... COMMIT ────┐
-                            │  1) [etl.parametros_producto]  (PK: codigo)    │
+                            │  1) [etl.parametros_producto]  (PK: codigo · fuente)
                             │  2) [etl.venta_limpia]         (PK: folio_v,codigo)
-                            │  3) [etl.resumen_producto]     (PK: codigo)    │
+                            │  3) [etl.resumen_producto]     (PK: codigo · 5 indicadores)
                             └──────────────────────┬─────────────────────────┘
                                                    │  (datos limpios + 5 indicadores)
                                                    ▼
-                  [etl.dss_parametros (v1)] ──▶ [modelo.js / escenarios.js] ──▶ Pantalla /decisiones
-                                                                                       │
-                                                                      ("Guardar foto DSS")
-                                                                                       ▼
-                                                                 [etl.dss_corridas] ──(corrida_id)──▶ [etl.dss_recomendaciones]</code></pre>
+                  [etl.dss_parametros (v1)] ──▶ [modelo.js / escenarios.js]
+                                                   ├──▶ Pantalla /decisiones (prioridades, 4 escenarios, presupuesto, "¿Por qué?")
+                                                   │          └──("Guardar foto DSS")──▶ [etl.dss_corridas] ──▶ [etl.dss_recomendaciones]
+                                                   └──▶ Pantalla /productos (panel lateral "Frescura y alertas" · Por caducar)</code></pre>
       </article>
 
       <!-- 4. MODELO DSS -->
@@ -2080,7 +2109,7 @@ PostgreSQL (localhost:5432 · BD "TBD")
               <tr>
                 <td><strong>3. Brecha contra mínimo</strong></td>
                 <td><code>existencia − stock_minimo</code></td>
-                <td>Valor negativo indica stock por debajo del piso de seguridad definido en el CSV externo.</td>
+                <td>Valor negativo indica stock por debajo del piso de seguridad (tomado de <code>fruteria.producto</code> o respaldo CSV).</td>
               </tr>
               <tr>
                 <td><strong>4. Margen de entrega</strong></td>
@@ -2153,13 +2182,15 @@ PostgreSQL (localhost:5432 · BD "TBD")
 
         <div class="grid-2">
           <div class="card">
-            <div class="card__title">Endpoints nuevos del módulo ETL y DSS</div>
+            <div class="card__title">Endpoints del módulo ETL, DSS y ecosistema conectado</div>
             <ul class="clean">
-              <li><code>GET /api/etl/corridas</code> — Lista las últimas 25 corridas (<code>VER_ETL</code>).</li>
-              <li><code>GET /api/etl/cambios</code> — Bitácora paginada (40/pág) con filtros <code>corridaId</code>, <code>entidad</code>, <code>tipo</code>, <code>buscar</code> y conteos con <code>COUNT(*) FILTER</code> (<code>VER_ETL</code>).</li>
+              <li><code>GET /api/etl/dias</code> — Devuelve los días con corridas registradas (<code>?anio=&amp;mes=</code>) para los puntos dorados del calendario en <code>/etl</code> (<code>VER_ETL</code>).</li>
+              <li><code>GET /api/etl/corridas</code> — Lista corridas (con filtro opcional <code>?fecha=YYYY-MM-DD</code>) para evitar aglomeración (<code>VER_ETL</code>).</li>
+              <li><code>GET /api/etl/cambios</code> — Bitácora paginada (40/pág) con filtros <code>corridaId</code>, <code>fecha</code>, <code>entidad</code>, <code>tipo</code>, <code>buscar</code> y conteos con <code>COUNT(*) FILTER</code> (<code>VER_ETL</code>).</li>
               <li><code>POST /api/etl/ejecutar</code> — Ejecuta el motor ETL en <code>modo: "completo" | "prueba"</code> usando el pool de sesión (<code>EJECUTAR_ETL</code>).</li>
-              <li><code>GET /api/dss/analisis</code> — Evalúa prioridades, 4 escenarios y devuelve fórmulas + corridas guardadas. Acepta query params acotados (<code>factorDemanda</code>, <code>extraEntrega</code>, <code>coberturaObjetivo</code>, <code>presupuesto</code>) (<code>VER_DSS</code>).</li>
+              <li><code>GET /api/dss/analisis</code> — Evalúa prioridades, 4 escenarios y fórmulas + corridas guardadas. Alimenta tanto <code>/decisiones</code> como el panel <em>Frescura y alertas</em> de <code>/productos</code> (<code>VER_DSS</code>).</li>
               <li><code>POST /api/dss/guardar-corrida</code> — Persiste un snapshot transaccional en <code>etl.dss_corridas</code> y <code>etl.dss_recomendaciones</code> (<code>EJECUTAR_DSS</code>).</li>
+              <li><code>POST/PUT /api/productos</code> y <code>GET /api/{ventas,compras}/dias</code> — Guardan <code>stockMinimo</code>, <code>vidaUtilDias</code> y <code>diasEntrega</code> por proveedor en <code>fruteria.*</code>, y exponen días con movimiento para el componente <code>CalendarioFecha</code>.</li>
             </ul>
           </div>
 
@@ -2170,6 +2201,7 @@ PostgreSQL (localhost:5432 · BD "TBD")
               <li><strong>Cookie segura:</strong> token criptográfico de 32 bytes (<code>crypto.randomBytes(32)</code>) en cookie <code>hj_sesion</code> con <code>HttpOnly; SameSite=Strict</code> (+ <code>Secure</code> en producción) y expiración por inactividad (<code>SESION_HORAS=8</code>).</li>
               <li><strong>Rate limiting en login:</strong> bloqueo tras <code>5</code> intentos fallidos en una ventana de <code>10 minutos</code> por usuario e IP.</li>
               <li><strong>Doble capa de permisos (RBAC):</strong> Express valida <code>requiere(PERMISOS.*)</code> en <code>permisos.js</code> y PostgreSQL vuelve a validar con los <code>GRANT/REVOKE</code> del rol en <code>04_roles.sql</code> y <code>07_dss.sql</code>.</li>
+              <li><strong>Protección de cuentas en <code>/empleados</code> y <code>/api/auth</code>:</strong> la pantalla de empleados no expone ni permite editar el nombre de usuario interno de PostgreSQL, y el backend ignora cualquier intento de sobreescribir el campo <code>usuario</code>.</li>
             </ul>
           </div>
         </div>
@@ -2366,23 +2398,23 @@ PostgreSQL (localhost:5432 · BD "TBD")
               <tr>
                 <td><code>stock_minimo</code></td>
                 <td><code>numeric(10,3)</code></td>
-                <td><code>datos-externos/parametros_producto.csv</code> (simulado)</td>
+                <td>1.º <code>fruteria.producto</code> (editable en <code>/productos</code>)<br />2.º <code>parametros_producto.csv</code> (respaldo simulado)</td>
                 <td>Piso de seguridad por producto</td>
-                <td><code>L2</code> coma → punto; <code>V2</code> debe ser <code>&gt;= 0</code>; default <code>10</code> si falta.</td>
+                <td><code>CHECK (&gt;= 0)</code> en BD; en CSV <code>L2</code> coma → punto y <code>V2 &gt;= 0</code>; estándar <code>10</code> si falta en ambos.</td>
               </tr>
               <tr>
                 <td><code>vida_util_dias</code></td>
                 <td><code>integer</code></td>
-                <td><code>datos-externos/parametros_producto.csv</code> (simulado)</td>
+                <td>1.º <code>fruteria.producto</code> (editable en <code>/productos</code>)<br />2.º <code>parametros_producto.csv</code> (respaldo simulado)</td>
                 <td>Días que el producto perecedero dura vendible</td>
-                <td><code>V3</code> rango entero <code>[1..60]</code>; fuera de rango → cuarentena.</td>
+                <td><code>CHECK (1..60)</code> en BD; en CSV <code>V3 [1..60]</code> (fuera de rango → cuarentena); estándar <code>7 d</code> si falta.</td>
               </tr>
               <tr>
                 <td><code>dias_entrega</code></td>
                 <td><code>integer</code></td>
-                <td><code>datos-externos/tiempos_entrega_proveedor.csv</code> (simulado)</td>
-                <td>Plazo en días que tarda el proveedor en surtir</td>
-                <td><code>I1</code> vacío → imputa <code>2</code> (<code>entrega_imputada=true</code>); <code>V3</code> rango <code>[0..30]</code>.</td>
+                <td>1.º <code>fruteria.producto_proveedor</code> (editable en <code>/productos</code>)<br />2.º <code>tiempos_entrega_proveedor.csv</code> (respaldo simulado)</td>
+                <td>Plazo en días que tarda cada proveedor en surtir</td>
+                <td><code>CHECK (0..30)</code> en BD (<code>entrega_imputada=false</code>); en CSV <code>I1</code> vacío → <code>2 d</code> (<code>entrega_imputada=true</code>), <code>V3 [0..30]</code>.</td>
               </tr>
               <tr>
                 <td><code>proveedor_principal</code></td>
@@ -2695,10 +2727,24 @@ PostgreSQL (localhost:5432 · BD "TBD")
         </details>
 
         <details class="qa">
+          <summary>¿Cómo funciona el ecosistema cuando se da de alta un producto nuevo o se edita un tiempo de entrega para futuros análisis?</summary>
+          <div class="qa__body">
+            El sistema cierra el ciclo operativo-analítico de forma automática: en <code>/productos</code>, el usuario captura o edita
+            <code>stock_minimo</code>, <code>vida_util_dias</code> (guardados en <code>fruteria.producto</code>) y los <code>dias_entrega</code> de cada proveedor
+            (guardados en <code>fruteria.producto_proveedor</code> y visibles también en <code>/proveedores</code>).
+            Al correr <strong>Ejecutar ETL</strong> en <code>/etl</code>, <code>server/src/etl/ejecutar.js</code> aplica prioridad en 3 niveles:
+            <strong>1.º</strong> usa los valores reales de <code>fruteria.*</code> (marcando <code>entrega_imputada = false</code> y registrando la fuente <code>fruteria (BD)</code> o <code>fruteria + csv</code>),
+            <strong>2.º</strong> si un campo sigue <code>NULL</code> en la BD, cae al valor ya limpiado de <code>datos-externos/*.csv</code>, y
+            <strong>3.º</strong> si tampoco existe en el CSV, aplica un estándar conservador (<code>10</code> mínimo, <code>7 d</code> vida útil, <code>2 d</code> entrega con <code>entrega_imputada = true</code>).
+            El resultado queda en <code>etl.resumen_producto</code> y actualiza al instante tanto <code>/decisiones</code> como el panel <em>Frescura y alertas</em> de <code>/productos</code>.
+          </div>
+        </details>
+
+        <details class="qa">
           <summary>¿Cuáles son las principales limitaciones o sesgos de su solución actual?</summary>
           <div class="qa__body">
             (1) La demanda usa promedio simple de 28 días, por lo que no predice picos bruscos estacionales (se mitiga con el escenario <code>Demanda +20 %</code> y sliders).
-            (2) Los parámetros de vida útil, stock mínimo y plazos de entrega provienen de CSV simulados (<code>datos-externos/</code>), y cuando falta un plazo se imputa con <code>2 días</code> (<code>I1</code>), lo cual se muestra explícitamente como alerta en la interfaz para revisión humana.
+            (2) Aunque los productos nuevos o editados ya almacenan <code>stock_minimo</code>, <code>vida_util_dias</code> y <code>dias_entrega</code> en PostgreSQL desde <code>/productos</code>, los productos no personalizados siguen respaldándose en los CSV simulados (<code>datos-externos/</code>), y cuando falta un plazo se imputa con <code>2 días</code> (<code>I1</code>), mostrándose explícitamente como alerta en la interfaz para revisión humana.
           </div>
         </details>
 

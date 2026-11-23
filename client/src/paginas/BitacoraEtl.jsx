@@ -1,8 +1,9 @@
 // Bitácora ETL y Calidad de Datos: vista estilo Auditoría con cambios Antes → Después.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuDatabase, LuFlaskConical, LuPlay, LuShieldAlert } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
+import { CalendarioFecha } from '../componentes/CalendarioFecha.jsx';
 import { Modal, useDialogos } from '../componentes/dialogos.jsx';
 import { EsqueletoTabla } from '../componentes/Efectos.jsx';
 import { Tabla } from '../componentes/Tabla.jsx';
@@ -191,25 +192,47 @@ export default function BitacoraEtl() {
   const { avisar } = useDialogos();
 
   const [corridaId, setCorridaId] = useState('');
+  const [fechaExacta, setFechaExacta] = useState('');
   const [entidad, setEntidad] = useState('todas');
   const [tipo, setTipo] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
   const [pagina, setPagina] = useState(1);
   const [ejecutando, setEjecutando] = useState(null); // null | 'completo' | 'prueba'
   const [seleccionado, setSeleccionado] = useState(null);
+  const inicializado = useRef(false);
 
   const buscar = useRetardo(busqueda);
 
-  useEffect(() => setPagina(1), [corridaId, entidad, tipo, buscar]);
+  useEffect(() => setPagina(1), [corridaId, fechaExacta, entidad, tipo, buscar]);
 
   const { datos, error, cargando, recargar } = useApi('/etl/cambios', {
     corridaId: corridaId || null,
+    fecha: fechaExacta || null,
     entidad: entidad === 'todas' ? null : entidad,
     tipo: tipo === 'todos' ? null : tipo,
     buscar,
     pagina,
     limite: 40,
   });
+
+  // Al entrar por primera vez, selecciona la última corrida para no aglomerar corridas anteriores.
+  useEffect(() => {
+    if (!inicializado.current && datos?.ultimaCorrida) {
+      inicializado.current = true;
+      setCorridaId(String(datos.ultimaCorrida.id));
+    }
+  }, [datos?.ultimaCorrida]);
+
+  const cambiarFecha = (nuevaFecha) => {
+    inicializado.current = true;
+    setFechaExacta(nuevaFecha);
+    setCorridaId('');
+  };
+
+  const cambiarCorrida = (nuevaCorrida) => {
+    inicializado.current = true;
+    setCorridaId(nuevaCorrida);
+  };
 
   const correr = async (modo) => {
     setEjecutando(modo);
@@ -220,6 +243,8 @@ export default function BitacoraEtl() {
       } else {
         avisar(`ETL #${r.corridaId} completado en ${r.duracionMs} ms (${r.filasCargadas} cargados, ${r.filasRechazadas} rechazados)`);
       }
+      inicializado.current = true;
+      setFechaExacta('');
       setCorridaId(String(r.corridaId));
       setTipo('todos');
       setEntidad('todas');
@@ -283,14 +308,23 @@ export default function BitacoraEtl() {
 
       <div className="filtros filtros--columna">
         <div className="filtros__fila">
+          <CalendarioFecha
+            valor={fechaExacta}
+            alCambiar={cambiarFecha}
+            rutaDias="/etl/dias"
+            etiqueta="Consultar bitácora ETL por fecha"
+            placeholder="Buscar por fecha"
+            singular="corrida"
+            plural="corridas"
+          />
           <select
             className="entrada"
             style={{ width: 'auto', minWidth: 230 }}
             aria-label="Filtrar por corrida"
             value={corridaId}
-            onChange={(e) => setCorridaId(e.target.value)}
+            onChange={(e) => cambiarCorrida(e.target.value)}
           >
-            <option value="">Todas las corridas</option>
+            <option value="">{fechaExacta ? `Todas las del ${fecha(fechaExacta)}` : 'Todas las corridas'}</option>
             {corridas.map((c) => (
               <option key={c.id} value={c.id}>
                 #{c.id} · {c.modo === 'prueba' ? 'Prueba' : 'Completo'} · {fechaHora(c.iniciadoEn)}

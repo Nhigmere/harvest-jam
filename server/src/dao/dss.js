@@ -1,7 +1,14 @@
 // Consultas SQL para la bitácora ETL y el módulo DSS (esquema etl.*).
 import { num, patronBusqueda } from '../db.js';
 
-export async function listarCorridasEtl(q, limite = 20) {
+export async function listarCorridasEtl(q, limite = 20, { fecha = null } = {}) {
+  const valores = [];
+  let where = '';
+  if (fecha) {
+    valores.push(fecha);
+    where = `where iniciado_en >= $1::date and iniciado_en < $1::date + 1`;
+  }
+  valores.push(limite);
   const filas = await q(
     `select id,
             to_char(iniciado_en, 'YYYY-MM-DD"T"HH24:MI:SS') as iniciado_en,
@@ -11,9 +18,10 @@ export async function listarCorridasEtl(q, limite = 20) {
             to_char(fecha_corte, 'YYYY-MM-DD') as fecha_corte,
             detalle_error
      from etl.corridas
+     ${where}
      order by id desc
-     limit $1`,
-    [limite],
+     limit $${valores.length}`,
+    valores,
   );
   return filas.map((f) => ({
     id: Number(f.id),
@@ -33,7 +41,21 @@ export async function listarCorridasEtl(q, limite = 20) {
   }));
 }
 
-function filtrosCambios({ corridaId, entidad, tipo, buscar }) {
+export async function diasConCorridasEtl(q, { desde, hasta }) {
+  const filas = await q(
+    `select to_char(iniciado_en::date, 'YYYY-MM-DD') as dia, count(*)::int as corridas
+     from etl.corridas
+     where iniciado_en >= $1::date and iniciado_en < $2::date + 1
+     group by iniciado_en::date
+     order by dia`,
+    [desde, hasta],
+  );
+  const dias = {};
+  for (const f of filas) dias[f.dia] = f.corridas;
+  return dias;
+}
+
+function filtrosCambios({ corridaId, entidad, tipo, buscar, fecha }) {
   const condiciones = [];
   const valores = [];
   const param = (v) => {
@@ -41,6 +63,10 @@ function filtrosCambios({ corridaId, entidad, tipo, buscar }) {
     return `$${valores.length}`;
   };
   if (corridaId) condiciones.push(`corrida_id = ${param(corridaId)}`);
+  if (fecha) {
+    const p = param(fecha);
+    condiciones.push(`fecha_hora >= ${p}::date and fecha_hora < ${p}::date + 1`);
+  }
   if (entidad) condiciones.push(`entidad = ${param(entidad)}`);
   if (tipo) condiciones.push(`tipo = ${param(tipo)}`);
   if (buscar) {

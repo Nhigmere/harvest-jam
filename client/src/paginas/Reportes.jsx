@@ -55,12 +55,12 @@ function VentasDetalladas({ periodo }) {
             cargando={cargando}
             filas={datos.ventas}
             columnas={[
-              { clave: 'folio', titulo: 'Folio', render: (v) => <span className="numeros">{v.folio}</span> },
-              { clave: 'fecha', titulo: 'Fecha', render: (v) => fechaHora(v.fecha) },
-              { clave: 'cliente', titulo: 'Cliente', render: (v) => nombrePropio(v.cliente) },
-              { clave: 'empleado', titulo: 'Atendió', render: (v) => nombrePropio(v.empleado) },
+              { clave: 'folio', titulo: 'Folio', ancho: '88px', render: (v) => <span className="numeros codigo-mono">#{v.folio}</span> },
+              { clave: 'fecha', titulo: 'Fecha', ancho: '150px', render: (v) => fechaHora(v.fecha) },
+              { clave: 'cliente', titulo: 'Cliente', ancho: '200px', render: (v) => nombrePropio(v.cliente) },
+              { clave: 'empleado', titulo: 'Atendió', ancho: '180px', render: (v) => nombrePropio(v.empleado) },
               { clave: 'productos', titulo: 'Productos', className: 'tabla__td--texto-largo', render: (v) => capitalizar(v.productos) },
-              { clave: 'total', titulo: 'Total', alinear: 'der', render: (v) => <strong className="numeros">{moneda(v.total)}</strong> },
+              { clave: 'total', titulo: 'Total', ancho: '116px', alinear: 'der', render: (v) => <strong className="numeros">{moneda(v.total)}</strong> },
             ]}
             vacio={<Vacio titulo={`No hay ventas en ${textoPeriodo(periodo)}`} />}
           />
@@ -153,110 +153,110 @@ export default function Reportes() {
             ) : <Vacio titulo={`No hay ventas en ${textoPeriodo(periodo)}`} />}
           </PanelGrafica>
 
-          <div className="reportes__rejilla">
-            <div className="reportes__columna">
-              <PanelGrafica
-                titulo="Ventas por hora del día"
-                descripcion={horaPico && horaPico.ventas > 0 ? `La hora con más tickets es de ${horaPico.hora}:00 a ${horaPico.hora + 1}:00.` : 'Número de tickets según la hora.'}
-                columnas={[
-                  { clave: 'hora', titulo: 'Hora', render: (f) => `${f.hora}:00 a ${f.hora + 1}:00` },
-                  { clave: 'ventas', titulo: 'Ventas', alinear: 'der', render: (f) => numero(f.ventas) },
-                ]}
-                filas={horas}
-              >
-                {horas.length ? (
-                  <GraficaColumnas
-                    datos={horas}
-                    campoX="hora"
-                    campoY="ventas"
-                    formatoX={(h) => `${h}h`}
-                    formatoValor={(v) => plural(v, 'venta', 'ventas')}
-                    etiqueta="Ventas por hora del día"
-                  />
-                ) : <Vacio titulo="Sin ventas en este periodo" />}
-              </PanelGrafica>
+          <div className="reportes__rejilla reportes__rejilla--estirar">
+            <PanelGrafica
+              titulo="Ventas por hora del día"
+              descripcion={horaPico && horaPico.ventas > 0 ? `La hora con más tickets es de ${horaPico.hora}:00 a ${horaPico.hora + 1}:00.` : 'Número de tickets según la hora.'}
+              columnas={[
+                { clave: 'hora', titulo: 'Hora', render: (f) => `${f.hora}:00 a ${f.hora + 1}:00` },
+                { clave: 'ventas', titulo: 'Ventas', alinear: 'der', render: (f) => numero(f.ventas) },
+              ]}
+              filas={horas}
+            >
+              {horas.length ? (
+                <GraficaColumnas
+                  datos={horas}
+                  campoX="hora"
+                  campoY="ventas"
+                  formatoX={(h) => `${h}h`}
+                  formatoValor={(v) => plural(v, 'venta', 'ventas')}
+                  etiqueta="Ventas por hora del día"
+                />
+              ) : <Vacio titulo="Sin ventas en este periodo" />}
+            </PanelGrafica>
 
-              <Panel titulo="Productos más vendidos" descripcion="Por importe vendido">
-                {datos.masVendidos.length ? (
-                  <BarrasRanking
-                    datos={datos.masVendidos.map((p) => ({ ...p, nombre: capitalizar(p.descripcion) }))}
-                    campoEtiqueta="nombre"
-                    campoValor="importe"
-                    formatoValor={monedaRedonda}
-                    detalle={(p) => cantidad(p.cantidad, p.unidadMedida)}
-                    etiqueta="Productos más vendidos"
-                  />
-                ) : <Vacio titulo="Sin ventas en este periodo" />}
-              </Panel>
-            </div>
+            <Panel titulo="Ventas por empleado" descripcion="Tickets cobrados y su importe">
+              {datos.empleados.length ? (
+                <BarrasRanking
+                  datos={datos.empleados.map((e) => ({ ...e, nombre: nombrePropio(e.nombre) }))}
+                  campoEtiqueta="nombre"
+                  campoValor="monto"
+                  formatoValor={monedaRedonda}
+                  detalle={(e) => plural(e.ventas, 'venta', 'ventas')}
+                  etiqueta="Ventas por empleado"
+                />
+              ) : <Vacio titulo="Sin ventas en este periodo" />}
+            </Panel>
+          </div>
 
-            <div className="reportes__columna">
-              <PanelGrafica
-                titulo="Ingresos por categoría"
-                descripcion="Qué parte de lo vendido es fruta y qué parte verdura."
-                columnas={[
-                  { clave: 'categoria', titulo: 'Categoría', render: (f) => capitalizar(f.categoria) },
-                  { clave: 'ingresos', titulo: 'Ingresos', alinear: 'der', render: (f) => moneda(f.ingresos) },
-                ]}
-                filas={datos.categorias}
-              >
-                {datos.categorias.length ? (
-                  <BarraSegmentada
-                    partes={datos.categorias.map((c) => ({ nombre: capitalizar(c.categoria), valor: c.ingresos }))}
-                    formatoValor={monedaRedonda}
-                    etiqueta="Ingresos por categoría"
-                  />
-                ) : <Vacio titulo="Sin ventas en este periodo" />}
-              </PanelGrafica>
+          <div className="reportes__rejilla reportes__rejilla--estirar">
+            <Panel titulo="Productos más vendidos" descripcion="Por importe vendido">
+              {datos.masVendidos.length ? (
+                <BarrasRanking
+                  datos={datos.masVendidos.map((p) => ({ ...p, nombre: capitalizar(p.descripcion) }))}
+                  campoEtiqueta="nombre"
+                  campoValor="importe"
+                  formatoValor={monedaRedonda}
+                  detalle={(p) => cantidad(p.cantidad, p.unidadMedida)}
+                  etiqueta="Productos más vendidos"
+                />
+              ) : <Vacio titulo="Sin ventas en este periodo" />}
+            </Panel>
 
-              <Panel titulo="Ventas por empleado" descripcion="Tickets cobrados y su importe">
-                {datos.empleados.length ? (
-                  <BarrasRanking
-                    datos={datos.empleados.map((e) => ({ ...e, nombre: nombrePropio(e.nombre) }))}
-                    campoEtiqueta="nombre"
-                    campoValor="monto"
-                    formatoValor={monedaRedonda}
-                    detalle={(e) => plural(e.ventas, 'venta', 'ventas')}
-                    etiqueta="Ventas por empleado"
-                  />
-                ) : <Vacio titulo="Sin ventas en este periodo" />}
-              </Panel>
+            <Panel titulo="Mejores clientes" descripcion="Clientes registrados con más compras (sin público en general)">
+              {datos.clientesFrecuentes.length ? (
+                <Tabla
+                  etiqueta="Mejores clientes"
+                  filas={datos.clientesFrecuentes}
+                  columnas={[
+                    { clave: 'nombre', titulo: 'Cliente', render: (c) => nombrePropio(c.nombre) },
+                    { clave: 'tipo', titulo: 'Tipo', ancho: '96px', render: (c) => <Insignia tono="neutro" icono={false}>{c.tipo === 'fisica' ? 'Física' : 'Moral'}</Insignia> },
+                    { clave: 'compras', titulo: 'Compras', ancho: '90px', alinear: 'der', render: (c) => <span className="numeros">{numero(c.compras)}</span> },
+                    { clave: 'monto', titulo: 'Importe', ancho: '112px', alinear: 'der', render: (c) => <span className="numeros">{moneda(c.monto)}</span> },
+                  ]}
+                />
+              ) : <Vacio titulo="Ningún cliente registrado compró en este periodo" />}
+            </Panel>
+          </div>
 
-              <Panel titulo="Mejores clientes" descripcion="Clientes registrados con más compras (sin público en general)">
-                {datos.clientesFrecuentes.length ? (
-                  <Tabla
-                    etiqueta="Mejores clientes"
-                    filas={datos.clientesFrecuentes}
-                    columnas={[
-                      { clave: 'nombre', titulo: 'Cliente', render: (c) => nombrePropio(c.nombre) },
-                      { clave: 'tipo', titulo: 'Tipo', render: (c) => <Insignia tono="neutro" icono={false}>{c.tipo === 'fisica' ? 'Física' : 'Moral'}</Insignia> },
-                      { clave: 'compras', titulo: 'Compras', alinear: 'der', render: (c) => <span className="numeros">{numero(c.compras)}</span> },
-                      { clave: 'monto', titulo: 'Importe', alinear: 'der', render: (c) => <span className="numeros">{moneda(c.monto)}</span> },
-                    ]}
-                  />
-                ) : <Vacio titulo="Ningún cliente registrado compró en este periodo" />}
-              </Panel>
+          <div className="reportes__rejilla reportes__rejilla--estirar">
+            <PanelGrafica
+              titulo="Ingresos por categoría"
+              descripcion="Qué parte de lo vendido es fruta y qué parte verdura."
+              columnas={[
+                { clave: 'categoria', titulo: 'Categoría', render: (f) => capitalizar(f.categoria) },
+                { clave: 'ingresos', titulo: 'Ingresos', alinear: 'der', render: (f) => moneda(f.ingresos) },
+              ]}
+              filas={datos.categorias}
+            >
+              {datos.categorias.length ? (
+                <BarraSegmentada
+                  partes={datos.categorias.map((c) => ({ nombre: capitalizar(c.categoria), valor: c.ingresos }))}
+                  formatoValor={monedaRedonda}
+                  etiqueta="Ingresos por categoría"
+                />
+              ) : <Vacio titulo="Sin ventas en este periodo" />}
+            </PanelGrafica>
 
-              <Panel titulo="Inventario bajo" descripcion={`Productos con ${numero(datos.stockBajo.umbral)} o menos en existencia, hoy`}>
-                {datos.stockBajo.productos.length ? (
-                  <Tabla
-                    etiqueta="Inventario bajo"
-                    clave="codigo"
-                    filas={datos.stockBajo.productos}
-                    columnas={[
-                      { clave: 'descripcion', titulo: 'Producto', render: (p) => capitalizar(p.descripcion) },
-                      {
-                        clave: 'existencia', titulo: 'Existencia', alinear: 'der',
-                        render: (p) => (p.existencia === 0
-                          ? <Insignia tono="critico">Agotado</Insignia>
-                          : <span className="numeros">{cantidad(p.existencia, p.unidadMedida)}</span>),
-                      },
-                      { clave: 'precioCompra', titulo: 'Costo', alinear: 'der', render: (p) => <span className="numeros">{moneda(p.precioCompra)}</span> },
-                    ]}
-                  />
-                ) : <Vacio titulo="Todo el inventario está por encima del mínimo" />}
-              </Panel>
-            </div>
+            <Panel titulo="Inventario bajo" descripcion={`Productos con ${numero(datos.stockBajo.umbral)} o menos en existencia, hoy`}>
+              {datos.stockBajo.productos.length ? (
+                <Tabla
+                  etiqueta="Inventario bajo"
+                  clave="codigo"
+                  filas={datos.stockBajo.productos}
+                  columnas={[
+                    { clave: 'descripcion', titulo: 'Producto', render: (p) => capitalizar(p.descripcion) },
+                    {
+                      clave: 'existencia', titulo: 'Existencia', ancho: '120px', alinear: 'der',
+                      render: (p) => (p.existencia === 0
+                        ? <Insignia tono="critico">Agotado</Insignia>
+                        : <span className="numeros">{cantidad(p.existencia, p.unidadMedida)}</span>),
+                    },
+                    { clave: 'precioCompra', titulo: 'Costo', ancho: '104px', alinear: 'der', render: (p) => <span className="numeros">{moneda(p.precioCompra)}</span> },
+                  ]}
+                />
+              ) : <Vacio titulo="Todo el inventario está por encima del mínimo" />}
+            </Panel>
           </div>
 
           <VentasDetalladas periodo={periodo} />

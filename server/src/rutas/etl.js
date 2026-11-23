@@ -4,21 +4,38 @@ import * as dssDao from '../dao/dss.js';
 import { ejecutarEtl } from '../etl/ejecutar.js';
 import { requiere, ruta } from '../middleware.js';
 import { PERMISOS as P } from '../permisos.js';
-import { paginacion } from '../validacion.js';
+import { fecha, paginacion } from '../validacion.js';
 
 const router = Router();
 const ENTIDADES = new Set(['parametros', 'entregas', 'ventas', 'resumen']);
 const TIPOS = new Set(['LIMPIADO', 'IMPUTADO', 'RECHAZADO', 'CARGADO']);
 
+router.get('/dias', requiere(P.VER_ETL), ruta(async (req, res) => {
+  const mesRaw = String(req.query.mes ?? '').trim();
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(mesRaw);
+  const hoy = new Date();
+  const anio = match ? Number(match[1]) : hoy.getFullYear();
+  const mes = match ? Number(match[2]) : hoy.getMonth() + 1;
+  const ultimoDia = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+  const prefijo = `${String(anio).padStart(4, '0')}-${String(mes).padStart(2, '0')}`;
+  const desde = `${prefijo}-01`;
+  const hasta = `${prefijo}-${String(ultimoDia).padStart(2, '0')}`;
+  const dias = await dssDao.diasConCorridasEtl(req.consultar, { desde, hasta });
+  res.json({ mes: prefijo, dias });
+}));
+
 router.get('/corridas', requiere(P.VER_ETL), ruta(async (req, res) => {
-  const corridas = await dssDao.listarCorridasEtl(req.consultar, 25);
+  const fechaFiltro = fecha(req.query.fecha, 'fecha');
+  const corridas = await dssDao.listarCorridasEtl(req.consultar, 25, { fecha: fechaFiltro });
   res.json({ corridas });
 }));
 
 router.get('/cambios', requiere(P.VER_ETL), ruta(async (req, res) => {
   const corridaRaw = Number.parseInt(req.query.corridaId ?? '', 10);
+  const fechaFiltro = fecha(req.query.fecha, 'fecha');
   const filtros = {
     corridaId: Number.isFinite(corridaRaw) && corridaRaw > 0 ? corridaRaw : null,
+    fecha: fechaFiltro,
     entidad: ENTIDADES.has(req.query.entidad) ? req.query.entidad : null,
     tipo: TIPOS.has(req.query.tipo) ? req.query.tipo : null,
     buscar: req.query.buscar?.trim() || null,
@@ -27,7 +44,7 @@ router.get('/cambios', requiere(P.VER_ETL), ruta(async (req, res) => {
   const [lista, resumen, corridas] = await Promise.all([
     dssDao.listarCambiosEtl(req.consultar, { ...filtros, ...pag }),
     dssDao.resumenCambiosEtl(req.consultar, filtros),
-    dssDao.listarCorridasEtl(req.consultar, 20),
+    dssDao.listarCorridasEtl(req.consultar, 25, { fecha: fechaFiltro }),
   ]);
   res.json({
     ...lista,

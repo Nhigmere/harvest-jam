@@ -1464,9 +1464,9 @@ select.entrada option {
 
 .ranking__fila {
   display: grid;
-  grid-template-columns: minmax(112px, 1.15fr) minmax(80px, 2fr) auto;
+  grid-template-columns: minmax(120px, 188px) minmax(100px, 1fr) auto;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
   padding: 7px 10px;
   margin: 0 -10px;
   border-radius: var(--radius-control);

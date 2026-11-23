@@ -395,8 +395,18 @@
   align-items: start;
 }
 
-.inicio__rejilla {
+.inicio__rejilla,
+.reportes__rejilla--estirar {
   align-items: stretch;
+}
+
+.reportes__rejilla--estirar > .panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.reportes__rejilla--estirar > .panel > .panel__cuerpo {
+  flex: 1;
 }
 
 .reportes__columna {
