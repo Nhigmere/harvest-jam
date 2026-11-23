@@ -153,7 +153,10 @@ function InspectorProveedor({ id, alCerrar, alEditar, alEliminar, avisar }) {
               <ul className="lista-simple">
                 {datos.productos.map((p) => (
                   <li key={p.codigo}>
-                    <span>{capitalizar(p.descripcion)}</span>
+                    <span>
+                      {capitalizar(p.descripcion)}
+                      {p.diasEntrega != null && <span className="texto-3 numeros"> · {p.diasEntrega} d entrega</span>}
+                    </span>
                     {p.existencia <= 0
                       ? <Insignia tono="critico">Agotado</Insignia>
                       : <span className="texto-2 numeros">{cantidad(p.existencia, p.unidadMedida)}</span>}

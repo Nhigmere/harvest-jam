@@ -677,6 +677,129 @@
       background: linear-gradient(90deg, var(--ink), var(--accent));
     }
 
+    /* Viaje visual de tabla en tabla */
+    .journey {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .station {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-soft);
+      padding: 16px 18px;
+      position: relative;
+    }
+
+    .station--origen { border-left: 4px solid var(--ink); }
+    .station--control { border-left: 4px solid #7c3aed; background: #faf8ff; }
+    .station--filtro { border-left: 4px solid #d97706; background: #fffdf5; }
+    .station--limpia { border-left: 4px solid var(--teal); background: #f3fbf9; }
+    .station--destino { border-left: 4px solid var(--accent); background: #fff7fa; }
+
+    .station__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .station__title {
+      font-weight: 800;
+      font-size: 0.98rem;
+      color: var(--ink);
+      margin: 0;
+    }
+
+    .station__arrow {
+      text-align: center;
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 1.05rem;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .table-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 8px 0 6px;
+    }
+
+    .table-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid #d4dceb;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .table-pill--ok { border-color: #99dcd3; background: var(--teal-soft); color: #0f4c45; }
+    .table-pill--bad { border-color: #f4bcbc; background: var(--danger-soft); color: var(--danger); }
+    .table-pill--gold { border-color: #ebd082; background: var(--gold-soft); color: #785500; }
+
+    .branch-split {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .branch-box {
+      border-radius: 10px;
+      padding: 13px 15px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .branch-box--bad {
+      border-color: #f3bcbc;
+      background: #fff6f6;
+    }
+
+    .branch-box--ok {
+      border-color: #a9e2d9;
+      background: #f2fbf9;
+    }
+
+    .branch-box h4 {
+      margin: 0 0 6px;
+      font-size: 0.92rem;
+    }
+
+    .trace-steps {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 0.87rem;
+    }
+
+    .trace-step {
+      display: grid;
+      grid-template-columns: 118px 1fr;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(27, 43, 75, 0.08);
+    }
+
+    .trace-step strong {
+      color: var(--ink);
+      font-size: 0.8rem;
+    }
+
     /* Vistas ocultables */
     .view-panel[hidden] { display: none; }
 
@@ -762,6 +885,7 @@
           <a href="#s-que-es">1. De qué trata</a>
           <a href="#s-problemas">2. Problemas detectados</a>
           <a href="#s-por-que-etl">3. Por qué un ETL</a>
+          <a href="#s-viaje-tablas">3B. Viaje de tabla en tabla</a>
           <a href="#s-como-lo-hicimos">4. Cómo lo implementamos</a>
           <a href="#s-comprobacion">5. Cómo lo comprobamos y mejora</a>
           <a href="#s-archivos">6. Archivos agregados</a>
@@ -966,6 +1090,168 @@
             </p>
           </div>
         </details>
+      </article>
+
+      <!-- 3B. EL VIAJE COMPLETO DE UN DATO DE TABLA EN TABLA -->
+      <article id="s-viaje-tablas" class="section">
+        <div class="section__head">
+          <div class="section__num">3B</div>
+          <div>
+            <h2>El viaje completo de un dato: de tabla en tabla hasta salir limpio</h2>
+            <p class="section__subtitle">Cómo pasa la información desde la caja y los CSV por cada tabla hasta llegar lista a Decisiones</p>
+          </div>
+        </div>
+
+        <p>
+          Para que nunca te pierdas si te preguntan <em>“¿y de qué tabla sale el dato y a qué tabla va cayendo?”</em>,
+          aquí está el recorrido exacto paso por paso desde que nace el dato sucio hasta que aparece limpio en pantalla:
+        </p>
+
+        <div class="journey">
+          <div class="station station--origen">
+            <div class="station__head">
+              <h3 class="station__title">Estación 1 · Punto de partida (Solo lectura — nunca se modifican)</h3>
+              <span class="tag tag--neutral">5 fuentes de entrada</span>
+            </div>
+            <p>El ETL toma una fotografía de los datos actuales sin alterar jamás la caja registradora ni los archivos:</p>
+            <div class="table-pills">
+              <span class="table-pill">fruteria.producto</span>
+              <span class="table-pill">fruteria.venta + detalle_venta</span>
+              <span class="table-pill">fruteria.producto_proveedor + proveedor</span>
+              <span class="table-pill table-pill--gold">parametros_producto.csv</span>
+              <span class="table-pill table-pill--gold">tiempos_entrega_proveedor.csv</span>
+            </div>
+            <p style="font-size:0.86rem;margin-top:6px;">
+              De <code>fruteria.*</code> saca existencias, precios, ventas reales y proveedores. De los dos CSV externos saca
+              el stock mínimo, los días de vida útil y cuántos días tarda cada proveedor en surtir.
+            </p>
+          </div>
+
+          <div class="station__arrow">↓</div>
+
+          <div class="station station--control">
+            <div class="station__head">
+              <h3 class="station__title">Estación 2 · Se abre el expediente de la corrida</h3>
+              <span class="tag tag--blue">Bitácora de control</span>
+            </div>
+            <div class="table-pills">
+              <span class="table-pill">etl.corridas</span>
+            </div>
+            <p style="font-size:0.88rem;">
+              Antes de procesar nada, se crea una fila nueva en <code>etl.corridas</code> con estado <code>en_curso</code>,
+              la fecha/hora, el modo (<code>completo</code> o <code>prueba</code>) y el nombre de quién presionó el botón.
+              Así, incluso si ocurre un error a la mitad, queda constancia de qué pasó.
+            </p>
+          </div>
+
+          <div class="station__arrow">↓</div>
+
+          <div class="station station--filtro">
+            <div class="station__head">
+              <h3 class="station__title">Estación 3 · Aduana de calidad (Limpieza, imputación y cuarentena)</h3>
+              <span class="tag tag--gold">Separación de lo bueno y lo malo</span>
+            </div>
+            <p style="font-size:0.88rem;">
+              En memoria (usando <code>server/src/etl/reglas.js</code>), cada fila pasa por las reglas <code>L1–L4</code>,
+              <code>I1</code> y <code>V1–V4</code>. Aquí el camino se divide en dos:
+            </p>
+            <div class="branch-split">
+              <div class="branch-box branch-box--bad">
+                <h4>🛑 Si el dato es imposible (falla V1–V4)</h4>
+                <div class="table-pills">
+                  <span class="table-pill table-pill--bad">etl.rechazos (Cuarentena)</span>
+                  <span class="table-pill table-pill--bad">etl.cambios (RECHAZADO)</span>
+                </div>
+                <p style="font-size:0.84rem;">
+                  Se guarda una copia exacta del registro malo en <code>etl.rechazos</code> y se registra el motivo en
+                  <code>etl.cambios</code>. <strong>Aquí se detiene su viaje: jamás entra a las tablas limpias.</strong>
+                </p>
+              </div>
+              <div class="branch-box branch-box--ok">
+                <h4>✅ Si el dato sirve o se puede arreglar (L1–L4, I1)</h4>
+                <div class="table-pills">
+                  <span class="table-pill table-pill--ok">etl.cambios (LIMPIADO / IMPUTADO)</span>
+                </div>
+                <p style="font-size:0.84rem;">
+                  Se quitan espacios, se cambia <code>kg → kilogramo</code>, comas a puntos, se quitan duplicados y, si falta
+                  el plazo de entrega, se pone <code>2 días</code> avisando. Cada arreglo queda anotado <em>Antes → Después</em>
+                  y el dato limpio avanza a la siguiente estación.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="station__arrow">↓</div>
+
+          <div class="station station--limpia">
+            <div class="station__head">
+              <h3 class="station__title">Estación 4 · Carga limpia en bloque (las 3 tablas de datos listos)</h3>
+              <span class="tag tag--teal">Todo o nada · Cero duplicados</span>
+            </div>
+            <p style="font-size:0.88rem;">
+              Dentro de una sola transacción segura, se vacían las versiones viejas de estas 3 tablas y se llenan con los datos recién depurados:
+            </p>
+            <div class="grid-3" style="margin:10px 0 0;">
+              <div class="card" style="background:#fff;">
+                <div class="card__title"><code>1. etl.parametros_producto</code></div>
+                <p style="font-size:0.84rem;">Guarda los datos externos ya limpios por producto: stock mínimo, vida útil, días de entrega, si fue imputado y proveedor principal.</p>
+              </div>
+              <div class="card" style="background:#fff;">
+                <div class="card__title"><code>2. etl.venta_limpia</code></div>
+                <p style="font-size:0.84rem;">Guarda cada renglón de venta válido (sin duplicados ni cantidades negativas) con su <strong>importe</strong> y <strong>margen</strong> ya calculados.</p>
+              </div>
+              <div class="card" style="background:#fff;border:2px solid var(--teal);">
+                <div class="card__title"><code>3. etl.resumen_producto</code> <span class="tag tag--teal">Final</span></div>
+                <p style="font-size:0.84rem;"><strong>La tabla final limpia.</strong> Junta el producto del POS + <code>parametros_producto</code> + los últimos 28 días de <code>venta_limpia</code> y deja los 5 indicadores ya calculados (1 fila por producto).</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="station__arrow">↓</div>
+
+          <div class="station station--destino">
+            <div class="station__head">
+              <h3 class="station__title">Estación 5 · Cierre y salida en pantalla</h3>
+              <span class="tag tag--accent">Listo para el usuario</span>
+            </div>
+            <div class="table-pills">
+              <span class="table-pill">etl.corridas (ok / con_rechazos)</span>
+              <span class="table-pill">etl.dss_parametros (pesos v1)</span>
+              <span class="table-pill table-pill--ok">etl.dss_corridas + dss_recomendaciones</span>
+            </div>
+            <p style="font-size:0.88rem;margin-top:6px;">
+              Se cierra <code>etl.corridas</code> con los totales finales y la fecha de corte. Desde ese instante:
+              la pantalla <strong><code>/etl</code></strong> lee <code>etl.corridas</code> y <code>etl.cambios</code> para mostrar todo lo que pasó;
+              y la pantalla <strong><code>/decisiones</code></strong> lee únicamente <strong><code>etl.resumen_producto</code></strong> junto con los pesos de <code>etl.dss_parametros</code>.
+              Si el comprador pulsa <em>“Guardar foto DSS”</em>, esa decisión se guarda en <code>etl.dss_corridas</code> y <code>etl.dss_recomendaciones</code>.
+            </p>
+          </div>
+        </div>
+
+        <h3>Dos ejemplos reales siguiendo el dato paso a paso</h3>
+        <div class="compare">
+          <div class="compare__col compare__col--after">
+            <h3>✅ Viaje de un dato sucio que SÍ sale limpio</h3>
+            <div class="trace-steps">
+              <div class="trace-step"><strong>1. Entra crudo</strong><span>En <code>parametros_producto.csv</code> llega: <code>" 5000"</code>, <code>"  manzana   ROJA "</code>, <code>"FRUTAS "</code>, <code>"kg"</code>, <code>"12,5"</code>.</span></div>
+              <div class="trace-step"><strong>2. Se limpia</strong><span>Aplica <code>L1</code> (código <code>5000</code> y <code>"Manzana roja"</code>), <code>L2</code> (<code>"fruta"</code> y <code>12.5</code>) y <code>L3</code> (<code>"kilogramo"</code>).</span></div>
+              <div class="trace-step"><strong>3. Bitácora</strong><span>Quedan anotados cada <em>Antes → Después</em> en <code>etl.cambios</code> con etiqueta <strong>Limpiado</strong>.</span></div>
+              <div class="trace-step"><strong>4. Tablas limpias</strong><span>Se guarda en <code>etl.parametros_producto</code>, se cruza con sus ventas en <code>etl.venta_limpia</code> y sale listo en <code>etl.resumen_producto</code>.</span></div>
+              <div class="trace-step"><strong>5. En pantalla</strong><span>Aparece en <code>/decisiones</code> con su cobertura, rotación, prioridad y cantidad sugerida.</span></div>
+            </div>
+          </div>
+
+          <div class="compare__col compare__col--before">
+            <h3>🛑 Viaje de un dato inválido (se frena antes)</h3>
+            <div class="trace-steps">
+              <div class="trace-step"><strong>1. Entra crudo</strong><span>En <code>tiempos_entrega_proveedor.csv</code> (renglón 57) llega código <code>5008</code> con fecha <code>"fecha-mala"</code>.</span></div>
+              <div class="trace-step"><strong>2. Se valida</strong><span>La regla <code>V4</code> detecta que <code>"fecha-mala"</code> no es una fecha válida.</span></div>
+              <div class="trace-step"><strong>3. Cuarentena</strong><span>Se guarda el registro completo en <code>etl.rechazos</code> y el motivo en <code>etl.cambios</code> con etiqueta <strong>Rechazado</strong>.</span></div>
+              <div class="trace-step"><strong>4. Protección</strong><span><strong>NO entra</strong> a <code>etl.parametros_producto</code> ni altera <code>etl.resumen_producto</code> ni el POS.</span></div>
+              <div class="trace-step"><strong>5. En pantalla</strong><span>Se puede revisar en <code>/etl</code> filtrando <em>Rechazados</em> sin haber dañado ninguna cifra.</span></div>
+            </div>
+          </div>
+        </div>
       </article>
 
       <!-- 4. CÓMO LO IMPLEMENTAMOS -->
@@ -1418,6 +1704,7 @@
           <a href="#t-stack">1. Stack y arquitectura</a>
           <a href="#t-bd">2. Esquemas SQL y aislamiento</a>
           <a href="#t-etl">3. Pipeline ETL y reglas</a>
+          <a href="#t-viaje-tablas">3B. Linaje tabla por tabla</a>
           <a href="#t-dss">4. Modelo DSS y fórmulas</a>
           <a href="#t-api-seg">5. API REST y seguridad RBAC</a>
           <a href="#t-config">6. Configuración y scripts</a>
@@ -1644,6 +1931,119 @@ PostgreSQL (localhost:5432 · BD "TBD")
           En modo <code>prueba</code>, procesa <code>datosPrueba.js</code> y <strong>solo inserta</strong> en
           <code>etl.corridas</code>, <code>etl.cambios</code> y <code>etl.rechazos</code> sin tocar las tablas limpias.
         </div>
+      </article>
+
+      <!-- 3B. LINAJE TÉCNICO TABLA POR TABLA -->
+      <article id="t-viaje-tablas" class="section">
+        <div class="section__head">
+          <div class="section__num section__num--tech">3B</div>
+          <div>
+            <h2>Linaje completo de datos: secuencia exacta tabla por tabla</h2>
+            <p class="section__subtitle">Trazado técnico real de <code>ejecutarEtl()</code> en <code>server/src/etl/ejecutar.js</code> hasta <code>/api/dss/analisis</code></p>
+          </div>
+        </div>
+
+        <p>
+          A diferencia de un DW clásico con múltiples tablas de staging en disco, Harvest JAM ejecuta las fases de
+          normalización y validación como <strong>transformaciones puras en memoria</strong> y materializa únicamente
+          la capa limpia y la bitácora en PostgreSQL dentro de una transacción ACID. Este es el orden exacto de
+          lecturas y escrituras:
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Paso</th>
+                <th>Tabla / Archivo origen</th>
+                <th>Función JS / Operación SQL</th>
+                <th>Tabla destino en <code>etl.*</code></th>
+                <th>Clave de cruce y efecto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1</strong></td>
+                <td>Sesión / CLI</td>
+                <td><code>INSERT INTO etl.corridas ... RETURNING id</code> (fuera de <code>BEGIN</code>)</td>
+                <td><code>etl.corridas</code></td>
+                <td>Genera <code>corrida_id</code> en estado <code>'en_curso'</code> para garantizar registro aunque haya <code>ROLLBACK</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>2</strong></td>
+                <td><code>fruteria.producto</code><br /><code>fruteria.producto_proveedor</code><br /><code>fruteria.proveedor</code></td>
+                <td><code>SELECT</code> de solo lectura + subconsulta del primer proveedor por <code>codigo</code></td>
+                <td>En memoria (<code>catalogoPorCodigo</code>, <code>codigosValidos</code>)</td>
+                <td>Llave: <code>codigo</code>. Define el universo válido contra el cual valida <code>V1</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>3</strong></td>
+                <td><code>fruteria.detalle_venta</code><br /><code>fruteria.venta</code><br /><code>etl.dss_parametros</code></td>
+                <td><code>JOIN</code> por <code>folio_v</code> y <code>codigo</code> + lectura de <code>ventana_dias=28</code> y <code>min_dias_ventas=5</code></td>
+                <td>En memoria (<code>ventasDb</code>)</td>
+                <td>Solo lectura sobre el POS; no altera folios, existencias ni triggers de <code>fruteria</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>4</strong></td>
+                <td><code>datos-externos/parametros_producto.csv</code><br /><code>tiempos_entrega_proveedor.csv</code></td>
+                <td><code>leerCsv()</code> → <code>procesarParametrosCsv()</code>, <code>procesarEntregasCsv()</code>, <code>procesarVentas()</code></td>
+                <td>Arreglos en memoria: <code>limpios</code>, <code>cambios[]</code>, <code>rechazos[]</code></td>
+                <td>Aplica <code>L1–L4</code>, imputa <code>I1</code> (<code>2 d</code>), separa <code>V1–V4</code>. Llaves: <code>codigo</code> y <code>folio_v:codigo</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>5</strong></td>
+                <td><code>catalogoPorCodigo</code> + <code>paramPorCodigo</code> + <code>entregaPorCodigo</code> + ventana 28d de <code>resVentas.limpios</code></td>
+                <td>Agregación por <code>codigo</code> en ventana <code>[fechaCorte − 27d .. fechaCorte]</code> + <code>calcularIndicadoresProducto()</code></td>
+                <td>En memoria (<code>resumenes[]</code>)</td>
+                <td>Calcula <code>demanda_diaria</code>, <code>dias_cobertura</code>, <code>rotacion</code>, <code>brecha_minimo</code>, <code>margen_entrega</code>, <code>margen_pct</code>, <code>riesgo_merma</code> y <code>datos_suficientes</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>6</strong></td>
+                <td>Transacción <code>BEGIN</code></td>
+                <td><code>TRUNCATE TABLE etl.parametros_producto, etl.venta_limpia, etl.resumen_producto</code> + <code>INSERT</code> (ventas en lotes de <code>250</code>)</td>
+                <td><code>etl.parametros_producto</code><br /><code>etl.venta_limpia</code><br /><code>etl.resumen_producto</code></td>
+                <td>Reconstrucción idempotente: PK <code>codigo</code> en parámetros/resumen y PK compuesta <code>(folio_v, codigo)</code> en ventas limpias.</td>
+              </tr>
+              <tr>
+                <td><strong>7</strong></td>
+                <td><code>cambios[]</code> + <code>rechazos[]</code> + evento <code>LD-01</code></td>
+                <td><code>insertarCambiosYRechazos()</code> + <code>UPDATE etl.corridas SET estado = ...</code> + <code>COMMIT</code></td>
+                <td><code>etl.cambios</code><br /><code>etl.rechazos</code><br /><code>etl.corridas</code></td>
+                <td>FK <code>corrida_id</code> con <code>ON DELETE CASCADE</code>. Guarda <code>dato_original</code> y <code>dato_antes/despues</code> en <code>jsonb</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>8</strong></td>
+                <td><code>etl.resumen_producto</code><br /><code>etl.dss_parametros</code></td>
+                <td><code>GET /api/dss/analisis</code> → <code>evaluarReabastecimiento()</code> + <code>compararEscenarios()</code></td>
+                <td>UI <code>/decisiones</code><br />(y opcionalmente <code>etl.dss_corridas</code> + <code>etl.dss_recomendaciones</code>)</td>
+                <td>El DSS nunca toca <code>fruteria.*</code> ni <code>etl.rechazos</code>; solo consume datos limpios y versionados (<code>version='v1'</code>).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <pre><code>FLUJO DE ESQUEMAS Y LLAVES (MODO COMPLETO)
+
+[fruteria.producto] ─────────┐
+[fruteria.producto_proveedor]┼──(codigo)──▶┐
+[fruteria.proveedor] ────────┘             │
+[fruteria.venta + detalle_venta] ─(folio_v,codigo)─▶ [reglas.js: L1–L4, I1, V1–V4]
+[parametros_producto.csv] ───(codigo)─────▶┤            │
+[tiempos_entrega_proveedor.csv] ─(codigo)─▶┘            ├──(inválidos V1–V4)──▶ [etl.rechazos] (CUARENTENA)
+                                                        ├──(todos los eventos)─▶ [etl.cambios] ──▶ Pantalla /etl
+                                                        │
+                            ┌──── BEGIN ... TRUNCATE + INSERT ... COMMIT ────┐
+                            │  1) [etl.parametros_producto]  (PK: codigo)    │
+                            │  2) [etl.venta_limpia]         (PK: folio_v,codigo)
+                            │  3) [etl.resumen_producto]     (PK: codigo)    │
+                            └──────────────────────┬─────────────────────────┘
+                                                   │  (datos limpios + 5 indicadores)
+                                                   ▼
+                  [etl.dss_parametros (v1)] ──▶ [modelo.js / escenarios.js] ──▶ Pantalla /decisiones
+                                                                                       │
+                                                                      ("Guardar foto DSS")
+                                                                                       ▼
+                                                                 [etl.dss_corridas] ──(corrida_id)──▶ [etl.dss_recomendaciones]</code></pre>
       </article>
 
       <!-- 4. MODELO DSS -->

@@ -48,7 +48,8 @@ export async function obtener(q, id) {
   );
   if (!filas[0]) return null;
   const productos = await q(
-    `select pr.codigo, pr.descripcion, pr.unidad_medida, pr.existencia::float8 as existencia, pr.precio_c::float8 as precio_c
+    `select pr.codigo, pr.descripcion, pr.unidad_medida, pr.existencia::float8 as existencia,
+            pr.precio_c::float8 as precio_c, pr.vida_util_dias, pp.dias_entrega
      from producto_proveedor pp join producto pr on pr.codigo = pp.codigo
      where pp.id_p = $1
      order by pr.descripcion`,
@@ -59,6 +60,8 @@ export async function obtener(q, id) {
     productos: productos.map((p) => ({
       codigo: p.codigo, descripcion: p.descripcion, unidadMedida: p.unidad_medida,
       existencia: p.existencia, precioCompra: p.precio_c,
+      vidaUtilDias: p.vida_util_dias ?? null,
+      diasEntrega: p.dias_entrega ?? null,
     })),
   };
 }

@@ -18,9 +18,19 @@ function validarProducto(cuerpo = {}) {
   if (!FRACCIONABLES.includes(unidadMedida) && !Number.isInteger(existencia)) {
     throw new HttpError(400, `La existencia debe ser entera cuando el producto se maneja por ${unidadMedida}.`, { campo: 'existencia' });
   }
-  const proveedores = Array.isArray(cuerpo.proveedores)
-    ? [...new Set(cuerpo.proveedores.map((p) => id(p, 'El proveedor')))]
-    : undefined;
+  let proveedores;
+  if (Array.isArray(cuerpo.proveedores)) {
+    const mapa = new Map();
+    for (const item of cuerpo.proveedores) {
+      const esObjeto = item && typeof item === 'object';
+      const idProv = id(esObjeto ? item.id : item, 'El proveedor');
+      const diasEntrega = esObjeto
+        ? numero(item.diasEntrega, { campo: 'diasEntrega', etiqueta: 'Los días de entrega', entero: true, min: 0, max: 30 })
+        : null;
+      mapa.set(idProv, { id: idProv, diasEntrega });
+    }
+    proveedores = [...mapa.values()];
+  }
 
   return {
     descripcion: texto(cuerpo.descripcion, { campo: 'descripcion', etiqueta: 'La descripción', requerido: true, min: 3, max: 100 })?.toLowerCase(),
@@ -29,6 +39,8 @@ function validarProducto(cuerpo = {}) {
     existencia,
     precioCompra: numero(cuerpo.precioCompra ?? 0, { campo: 'precioCompra', etiqueta: 'El precio de compra', min: 0, max: 999_999.99 }),
     precioVenta: numero(cuerpo.precioVenta, { campo: 'precioVenta', etiqueta: 'El precio de venta', requerido: true, mayorQue: 0, max: 999_999.99 }),
+    stockMinimo: numero(cuerpo.stockMinimo, { campo: 'stockMinimo', etiqueta: 'El stock mínimo', min: 0, max: 999_999 }),
+    vidaUtilDias: numero(cuerpo.vidaUtilDias, { campo: 'vidaUtilDias', etiqueta: 'La vida útil (días)', entero: true, min: 1, max: 60 }),
     proveedores,
   };
 }

@@ -61,14 +61,22 @@ export async function ejecutarEtl(pool, { modo = 'completo', ejecutadoPor = 'sis
     const { rows: productosDb } = await cliente.query(`
       select p.codigo, p.descripcion, p.categoria, p.unidad_medida,
              p.existencia::float as existencia, p.precio_c::float as precio_c, p.precio_v::float as precio_v,
+             p.stock_minimo::float as stock_minimo_bd, p.vida_util_dias as vida_util_bd,
              (
                select pr.nombre
                from fruteria.producto_proveedor pp
                join fruteria.proveedor pr on pr.id_p = pp.id_p
                where pp.codigo = p.codigo
-               order by pp.id_p asc
+               order by (pp.dias_entrega is null) asc, pp.dias_entrega asc, pp.id_p asc
                limit 1
-             ) as proveedor_principal
+             ) as proveedor_principal,
+             (
+               select pp.dias_entrega
+               from fruteria.producto_proveedor pp
+               where pp.codigo = p.codigo and pp.dias_entrega is not null
+               order by pp.dias_entrega asc, pp.id_p asc
+               limit 1
+             ) as dias_entrega_bd
       from fruteria.producto p
       order by p.codigo
     `);
@@ -187,10 +195,18 @@ export async function ejecutarEtl(pool, { modo = 'completo', ejecutadoPor = 'sis
       const cat = normalizarCategoria(p.categoria);
       const uni = normalizarUnidad(p.unidad_medida);
 
-      const stockMinimo = param?.stockMinimo ?? 10;
-      const vidaUtilDias = param?.vidaUtilDias ?? 7;
-      const diasEntrega = entrega?.diasEntrega ?? 2;
-      const entregaImputada = entrega ? entrega.entregaImputada : true;
+      // Prioridad de fuentes: 1) dato real capturado en fruteria.*, 2) CSV externo limpio, 3) estándar seguro.
+      const tieneMinBd = p.stock_minimo_bd !== null && p.stock_minimo_bd !== undefined;
+      const tieneVidaBd = p.vida_util_bd !== null && p.vida_util_bd !== undefined;
+      const tieneEntregaBd = p.dias_entrega_bd !== null && p.dias_entrega_bd !== undefined;
+
+      const stockMinimo = tieneMinBd ? Number(p.stock_minimo_bd) : (param?.stockMinimo ?? 10);
+      const vidaUtilDias = tieneVidaBd ? Number(p.vida_util_bd) : (param?.vidaUtilDias ?? 7);
+      const diasEntrega = tieneEntregaBd ? Number(p.dias_entrega_bd) : (entrega?.diasEntrega ?? 2);
+      const entregaImputada = tieneEntregaBd ? false : (entrega ? entrega.entregaImputada : true);
+      const fuenteParam = (tieneMinBd || tieneVidaBd || tieneEntregaBd)
+        ? (param || entrega ? 'fruteria + csv' : 'fruteria (BD)')
+        : 'datos-externos/*.csv';
       const unidadesVendidas = Math.round((agg?.unidades ?? 0) * 1000) / 1000;
       const diasConVentas = agg?.dias.size ?? 0;
 
@@ -219,6 +235,7 @@ export async function ejecutarEtl(pool, { modo = 'completo', ejecutadoPor = 'sis
         vidaUtilDias,
         diasEntrega,
         entregaImputada,
+        fuenteParam,
         proveedorPrincipal: p.proveedor_principal ? limpiarTexto(p.proveedor_principal).valor : 'Sin proveedor asignado',
         diasConVentas,
         unidadesVendidas,
@@ -255,7 +272,7 @@ export async function ejecutarEtl(pool, { modo = 'completo', ejecutadoPor = 'sis
          values ($1,$2,$3,$4,$5,$6,$7)`,
         [
           r.codigo, r.stockMinimo, r.vidaUtilDias, r.diasEntrega,
-          r.entregaImputada, r.proveedorPrincipal, 'datos-externos/*.csv',
+          r.entregaImputada, r.proveedorPrincipal, r.fuenteParam,
         ],
       );
 

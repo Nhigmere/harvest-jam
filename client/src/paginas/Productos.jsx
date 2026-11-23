@@ -22,7 +22,10 @@ import {
 } from '../formato.js';
 import { useApi } from '../hooks.js';
 
-const VACIO = { descripcion: '', categoria: 'fruta', unidadMedida: 'kilogramo', precioCompra: '', precioVenta: '', existencia: '0', proveedores: [] };
+const VACIO = {
+  descripcion: '', categoria: 'fruta', unidadMedida: 'kilogramo', precioCompra: '', precioVenta: '',
+  existencia: '0', stockMinimo: '', vidaUtilDias: '', proveedores: [],
+};
 
 function estadoDe(p, umbral) {
   if (p.existencia <= 0) return 'agotado';
@@ -56,7 +59,16 @@ function tonoCategoria(categoria) {
 function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar, alGuardar, alEliminar }) {
   const { puede } = useSesion();
   const f = useFormulario(producto
-    ? { ...VACIO, ...producto, precioCompra: String(producto.precioCompra), precioVenta: String(producto.precioVenta), existencia: String(producto.existencia), proveedores: [] }
+    ? {
+      ...VACIO,
+      ...producto,
+      precioCompra: String(producto.precioCompra),
+      precioVenta: String(producto.precioVenta),
+      existencia: String(producto.existencia),
+      stockMinimo: producto.stockMinimo != null ? String(producto.stockMinimo) : '',
+      vidaUtilDias: producto.vidaUtilDias != null ? String(producto.vidaUtilDias) : '',
+      proveedores: [],
+    }
     : VACIO);
   const proveedoresApi = useApi('/proveedores', { opciones: 1 }, { activo: abierto && puede('VER_PROVEEDORES') });
   const [filtroProv, setFiltroProv] = useState('');
@@ -65,7 +77,10 @@ function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar,
   useEffect(() => {
     if (!producto || !puede('VER_PROVEEDORES')) return;
     api.get(`/productos/${producto.codigo}`)
-      .then((p) => fijar('proveedores', (p.proveedores ?? []).map((x) => x.id)))
+      .then((p) => fijar('proveedores', (p.proveedores ?? []).map((x) => ({
+        id: x.id,
+        diasEntrega: x.diasEntrega != null ? String(x.diasEntrega) : '',
+      }))))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [producto?.codigo]);
@@ -75,6 +90,23 @@ function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar,
   const pc = Number(v.precioCompra);
   const margenTexto = pv > 0 && pc >= 0 ? `Margen: ${porcentaje(((pv - pc) / pv) * 100)} (${moneda(pv - pc)} por ${v.unidadMedida})` : null;
   const proveedores = (proveedoresApi.datos?.proveedores ?? []).filter((p) => !filtroProv || p.nombre.includes(filtroProv.toLowerCase()));
+  const provSeleccionado = (idProv) => v.proveedores.find((x) => x.id === idProv);
+
+  const alternarProveedor = (idProv, marcado) => {
+    f.fijar(
+      'proveedores',
+      marcado
+        ? [...v.proveedores, { id: idProv, diasEntrega: '' }]
+        : v.proveedores.filter((x) => x.id !== idProv),
+    );
+  };
+
+  const cambiarEntrega = (idProv, dias) => {
+    f.fijar(
+      'proveedores',
+      v.proveedores.map((x) => (x.id === idProv ? { ...x, diasEntrega: dias } : x)),
+    );
+  };
 
   const guardar = (e) => {
     e.preventDefault();
@@ -84,7 +116,14 @@ function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar,
         precioCompra: valores.precioCompra === '' ? 0 : Number(valores.precioCompra),
         precioVenta: valores.precioVenta === '' ? null : Number(valores.precioVenta),
         existencia: valores.existencia === '' ? 0 : Number(valores.existencia),
-        proveedores: puede('VER_PROVEEDORES') ? valores.proveedores : undefined,
+        stockMinimo: valores.stockMinimo === '' ? null : Number(valores.stockMinimo),
+        vidaUtilDias: valores.vidaUtilDias === '' ? null : Number(valores.vidaUtilDias),
+        proveedores: puede('VER_PROVEEDORES')
+          ? valores.proveedores.map((x) => ({
+            id: x.id,
+            diasEntrega: x.diasEntrega === '' ? null : Number(x.diasEntrega),
+          }))
+          : undefined,
       };
       const guardado = producto ? await api.put(`/productos/${producto.codigo}`, cuerpo) : await api.post('/productos', cuerpo);
       alGuardar(guardado, Boolean(producto));
@@ -153,23 +192,58 @@ function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar,
           )}
         </Campo>
 
+        <Campo etiqueta="Stock mínimo" opcional error={f.errorDe('stockMinimo')} ayuda="Piso de seguridad para el análisis ETL y Decisiones.">
+          {(p) => (
+            <input
+              {...p}
+              {...f.campo('stockMinimo')}
+              className="entrada numeros"
+              inputMode={esFraccionable(v.unidadMedida) ? 'decimal' : 'numeric'}
+              placeholder="Ej. 15"
+            />
+          )}
+        </Campo>
+        <Campo etiqueta="Vida útil (días)" opcional error={f.errorDe('vidaUtilDias')} ayuda="Entre 1 y 60 días; evita sugerir compras con merma.">
+          {(p) => <input {...p} {...f.campo('vidaUtilDias')} className="entrada numeros" inputMode="numeric" placeholder="Ej. 7" />}
+        </Campo>
+
         {puede('VER_PROVEEDORES') && (
           <fieldset className="formulario__ancho casillas">
-            <legend>Proveedores que lo surten <span className="campo__opcional">(opcional)</span></legend>
+            <legend>Proveedores y días de entrega <span className="campo__opcional">(opcional · 0 a 30 días)</span></legend>
             <Buscador valor={filtroProv} alCambiar={setFiltroProv} etiqueta="Filtrar proveedores" placeholder="Filtrar proveedores" />
             <div className="casillas__lista">
-              {proveedores.map((p) => (
-                <label key={p.id} className="casilla">
-                  <input
-                    type="checkbox"
-                    checked={v.proveedores.includes(p.id)}
-                    onChange={(e) => f.fijar('proveedores', e.target.checked ? [...v.proveedores, p.id] : v.proveedores.filter((x) => x !== p.id))}
-                  />
-                  <span>{nombrePropio(p.nombre)} <span className="texto-3">({capitalizar(p.ciudad)})</span></span>
-                </label>
-              ))}
+              {proveedores.map((p) => {
+                const sel = provSeleccionado(p.id);
+                return (
+                  <div key={p.id} className={`casilla casilla--entrega ${sel ? 'casilla--activa' : ''}`}>
+                    <label className="casilla__check">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(sel)}
+                        onChange={(e) => alternarProveedor(p.id, e.target.checked)}
+                      />
+                      <span>{nombrePropio(p.nombre)} <span className="texto-3">({capitalizar(p.ciudad)})</span></span>
+                    </label>
+                    {sel && (
+                      <label className="casilla__dias" title="Días que tarda este proveedor en surtir">
+                        <input
+                          type="number"
+                          min="0"
+                          max="30"
+                          className="entrada numeros casilla__dias-input"
+                          placeholder="días"
+                          aria-label={`Días de entrega de ${nombrePropio(p.nombre)}`}
+                          value={sel.diasEntrega}
+                          onChange={(e) => cambiarEntrega(p.id, e.target.value)}
+                        />
+                        <span>d</span>
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <p className="campo__ayuda">{v.proveedores.length ? `${v.proveedores.length} seleccionados` : 'Ninguno seleccionado'}</p>
+            <p className="campo__ayuda">{v.proveedores.length ? `${v.proveedores.length} seleccionados · al guardar y correr el ETL se usarán estos plazos.` : 'Ninguno seleccionado'}</p>
           </fieldset>
         )}
 
@@ -249,6 +323,14 @@ function InspectorProducto({ producto, umbral, alCerrar, alEditar, alEliminar })
                 <span className="drawer__dato-clave"><LuTag aria-hidden="true" /> Utilidad por {abreviaturaUnidad(producto.unidadMedida, 1)}</span>
                 <span className="drawer__dato-valor numeros">{moneda(producto.precioVenta - producto.precioCompra)}</span>
               </div>
+              <div className="drawer__dato">
+                <span className="drawer__dato-clave"><LuHourglass aria-hidden="true" /> Vida útil</span>
+                <span className="drawer__dato-valor numeros">{producto.vidaUtilDias != null ? `${producto.vidaUtilDias} días` : 'Según CSV / estándar'}</span>
+              </div>
+              <div className="drawer__dato">
+                <span className="drawer__dato-clave"><LuPackage aria-hidden="true" /> Stock mínimo (DSS)</span>
+                <span className="drawer__dato-valor numeros">{producto.stockMinimo != null ? cantidad(producto.stockMinimo, producto.unidadMedida) : 'Según CSV / estándar'}</span>
+              </div>
             </div>
           </div>
 
@@ -264,7 +346,9 @@ function InspectorProducto({ producto, umbral, alCerrar, alEditar, alEliminar })
                         <LuTruck size={14} style={{ color: 'var(--accent)' }} aria-hidden="true" />
                         {nombrePropio(prov.nombre)}
                       </span>
-                      <span className="texto-2">{capitalizar(prov.ciudad)}</span>
+                      <span className="texto-2 numeros">
+                        {prov.diasEntrega != null ? `${prov.diasEntrega} d entrega` : capitalizar(prov.ciudad ?? '')}
+                      </span>
                     </li>
                   ))}
                 </ul>

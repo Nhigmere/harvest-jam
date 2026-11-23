@@ -973,6 +973,42 @@ select.entrada option {
   accent-color: var(--accent);
 }
 
+.casilla--entrega {
+  justify-content: space-between;
+  gap: 8px;
+  cursor: default;
+}
+
+.casilla--activa {
+  background: rgba(212, 175, 106, 0.08);
+}
+
+.casilla__check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.casilla__dias {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.casilla__dias-input {
+  width: 56px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 0.75rem;
+  text-align: right;
+}
+
 /* --- Avisos (toasts) y errores --- */
 .avisos {
   position: fixed;

@@ -8,6 +8,15 @@
 
 set search_path to fruteria, public;
 
+-- Columnas opcionales en el catálogo operativo para nuevos productos y
+-- futuros análisis ETL/DSS (idempotente: no borra ni altera datos existentes).
+alter table fruteria.producto
+    add column if not exists stock_minimo numeric(10, 3) check (stock_minimo >= 0),
+    add column if not exists vida_util_dias integer check (vida_util_dias between 1 and 60);
+
+alter table fruteria.producto_proveedor
+    add column if not exists dias_entrega integer check (dias_entrega between 0 and 30);
+
 create schema if not exists etl authorization postgres;
 
 -- ---------------------------------------------------------------------
