@@ -52,11 +52,11 @@ export default function Login() {
         <div className="acceso__pilares">
           <div>
             <p className="acceso__pilar-valor">Tiempo real</p>
-            <p className="acceso__pilar-texto">Inventario y auditoría sincronizados en PostgreSQL</p>
+            <p className="acceso__pilar-texto">Inventario y auditoría sincronizados al instante</p>
           </div>
           <div>
             <p className="acceso__pilar-valor">Por rol</p>
-            <p className="acceso__pilar-texto">Permisos verificados en API y base de datos</p>
+            <p className="acceso__pilar-texto">Accesos protegidos según el puesto de cada usuario</p>
           </div>
           <div>
             <p className="acceso__pilar-valor">Mostrador ágil</p>

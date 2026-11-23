@@ -193,7 +193,7 @@ export default function Decisiones() {
         <span>
           <strong>Recomendación sujeta a revisión humana.</strong> El sistema nunca registra compras automáticamente.
           {datos?.fechaCorte && <> Fecha de corte de ventas: <strong>{fecha(datos.fechaCorte)}</strong>.</>}
-          {' '}Los tiempos de entrega, stock mínimo y vida útil provienen de fuentes CSV simuladas (`datos-externos/`), limpiadas por el ETL.
+          {' '}Los tiempos de entrega, stock mínimo y vida útil se toman del catálogo de productos (con respaldo de datos simulados para productos aún sin definir).
         </span>
       </div>
 
@@ -483,7 +483,7 @@ export default function Decisiones() {
 
           {/* Documentación en vivo de los 5 indicadores + historial de fotos guardadas */}
           <div className="reportes__rejilla">
-            <Panel titulo="Fórmulas de indicadores (trazabilidad)" descripcion="Cálculos ejecutados en server/src/dss/indicadores.js">
+            <Panel titulo="Fórmulas de indicadores" descripcion="Cómo se calcula cada métrica a partir del inventario y las ventas recientes">
               <ul className="lista-movimientos">
                 {datos.definicionIndicadores.map((ind) => (
                   <li key={ind.id}>

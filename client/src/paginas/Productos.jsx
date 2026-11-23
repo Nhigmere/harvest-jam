@@ -192,7 +192,7 @@ function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar,
           )}
         </Campo>
 
-        <Campo etiqueta="Stock mínimo" opcional error={f.errorDe('stockMinimo')} ayuda="Piso de seguridad para el análisis ETL y Decisiones.">
+        <Campo etiqueta="Stock mínimo" opcional error={f.errorDe('stockMinimo')} ayuda="Cantidad mínima recomendada antes de pedir más mercancía.">
           {(p) => (
             <input
               {...p}
@@ -203,7 +203,7 @@ function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar,
             />
           )}
         </Campo>
-        <Campo etiqueta="Vida útil (días)" opcional error={f.errorDe('vidaUtilDias')} ayuda="Entre 1 y 60 días; evita sugerir compras con merma.">
+        <Campo etiqueta="Vida útil (días)" opcional error={f.errorDe('vidaUtilDias')} ayuda="Entre 1 y 60 días; ayuda a evitar compras excesivas y merma.">
           {(p) => <input {...p} {...f.campo('vidaUtilDias')} className="entrada numeros" inputMode="numeric" placeholder="Ej. 7" />}
         </Campo>
 
@@ -243,7 +243,7 @@ function FormularioProducto({ abierto, producto, unidades, categorias, alCerrar,
                 );
               })}
             </div>
-            <p className="campo__ayuda">{v.proveedores.length ? `${v.proveedores.length} seleccionados · al guardar y correr el ETL se usarán estos plazos.` : 'Ninguno seleccionado'}</p>
+            <p className="campo__ayuda">{v.proveedores.length ? `${v.proveedores.length} seleccionados · indica cuántos días tarda cada uno en surtir.` : 'Ninguno seleccionado'}</p>
           </fieldset>
         )}
 
@@ -325,11 +325,11 @@ function InspectorProducto({ producto, umbral, alCerrar, alEditar, alEliminar })
               </div>
               <div className="drawer__dato">
                 <span className="drawer__dato-clave"><LuHourglass aria-hidden="true" /> Vida útil</span>
-                <span className="drawer__dato-valor numeros">{producto.vidaUtilDias != null ? `${producto.vidaUtilDias} días` : 'Según CSV / estándar'}</span>
+                <span className="drawer__dato-valor numeros">{producto.vidaUtilDias != null ? `${producto.vidaUtilDias} días` : 'No definido'}</span>
               </div>
               <div className="drawer__dato">
-                <span className="drawer__dato-clave"><LuPackage aria-hidden="true" /> Stock mínimo (DSS)</span>
-                <span className="drawer__dato-valor numeros">{producto.stockMinimo != null ? cantidad(producto.stockMinimo, producto.unidadMedida) : 'Según CSV / estándar'}</span>
+                <span className="drawer__dato-clave"><LuPackage aria-hidden="true" /> Stock mínimo</span>
+                <span className="drawer__dato-valor numeros">{producto.stockMinimo != null ? cantidad(producto.stockMinimo, producto.unidadMedida) : 'No definido'}</span>
               </div>
             </div>
           </div>
