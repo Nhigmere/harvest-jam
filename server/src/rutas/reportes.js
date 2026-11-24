@@ -22,7 +22,7 @@ reportesRouter.get('/', requiere(P.VER_REPORTES), ruta(async (req, res) => {
   const umbral = numero(req.query.umbral ?? config.umbralStockBajo, { campo: 'umbral', etiqueta: 'El umbral', min: 0, max: 100_000 });
   const q = req.consultar;
 
-  const [resumen, resumenAnterior, compraResumen, serie, masVendidos, empleados, frecuentes, stockBajo, categorias, horas] =
+  const [resumen, resumenAnterior, compraResumen, serie, masVendidos, empleados, frecuentes, stockBajo, categorias, horas, inventario] =
     await Promise.all([
       reportes.resumenVentas(q, rango),
       reportes.resumenVentas(q, anterior),
@@ -30,10 +30,11 @@ reportesRouter.get('/', requiere(P.VER_REPORTES), ruta(async (req, res) => {
       reportes.serieVentas(q, rango),
       reportes.masVendidos(q, { ...rango, limite: 10 }),
       reportes.porEmpleado(q, rango),
-      reportes.clientesFrecuentes(q, { ...rango, limite: 5 }),
+      reportes.clientesFrecuentes(q, { ...rango, limite: 8 }),
       reportes.stockBajo(q, umbral),
       reportes.porCategoria(q, rango),
       reportes.porHora(q, rango),
+      reportes.inventario(q, umbral),
     ]);
 
   res.json({
@@ -41,10 +42,18 @@ reportesRouter.get('/', requiere(P.VER_REPORTES), ruta(async (req, res) => {
     anterior,
     resumen: {
       ...resumen,
+      ingresosAnterior: resumenAnterior.ingresos,
+      ventasAnterior: resumenAnterior.ventas,
+      margenAnterior: resumenAnterior.margenEstimado,
       variacionIngresos: variacion(resumen.ingresos, resumenAnterior.ingresos),
       variacionVentas: variacion(resumen.ventas, resumenAnterior.ventas),
+      variacionMargen: variacion(resumen.margenEstimado, resumenAnterior.margenEstimado),
+      variacionTicket: variacion(resumen.ticketPromedio, resumenAnterior.ticketPromedio),
+      margenPct: resumen.ingresos > 0 ? Math.round((resumen.margenEstimado / resumen.ingresos) * 1000) / 10 : 0,
+      balanceNeto: Math.round((resumen.ingresos - compraResumen.gasto) * 100) / 100,
       compras: compraResumen,
     },
+    inventario,
     serie,
     masVendidos,
     empleados,
@@ -59,7 +68,8 @@ reportesRouter.get('/', requiere(P.VER_REPORTES), ruta(async (req, res) => {
 reportesRouter.get('/ventas', requiere(P.VER_REPORTES), ruta(async (req, res) => {
   const rango = rangoFechas(req.query, 30);
   const pag = paginacion(req.query, { limitePorDefecto: 50, limiteMaximo: 5000 });
-  res.json({ ...rango, ...(await reportes.ventasDetalladas(req.consultar, { ...rango, ...pag })), pagina: pag.pagina, limite: pag.limite });
+  const buscar = typeof req.query.buscar === 'string' && req.query.buscar.trim() ? req.query.buscar.trim() : null;
+  res.json({ ...rango, ...(await reportes.ventasDetalladas(req.consultar, { ...rango, ...pag, buscar })), pagina: pag.pagina, limite: pag.limite });
 }));
 
 // Tablero: cada bloque aparece solo si el rol puede ver esos datos.

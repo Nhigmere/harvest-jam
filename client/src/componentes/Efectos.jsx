@@ -44,7 +44,36 @@ export function ContadorAnimado({ valor, formato, duracion = 480 }) {
   return formato ? formato(mostrado) : String(Math.round(mostrado));
 }
 
-// Brillo radial sutil que sigue al puntero en tarjetas .lujo-brillo sin re-renderizar React.
+// Selector unificado de superficies que reaccionan al reflector del cursor sin re-renderizar React.
+const SELECTOR_LUZ = [
+  '.lujo-brillo',
+  '.panel',
+  '.menu',
+  '.modal',
+  '.drawer',
+  '.ficha',
+  '.producto-pos',
+  '.vc-ticket-card',
+  '.vc-hero__card',
+  '.vc-ranking-fila',
+  '.inicio-dock__btn',
+  '.inicio-hero__stat',
+  '.inicio-tab',
+  '.inicio-faltante',
+  '.dss-kpi-btn',
+  '.dss-kpi-item',
+  '.dss-escenario',
+  '.dss-liq-card',
+  '.dss-foto-fila',
+  '.dss-tab-btn',
+  '.rep-insight',
+  '.rep-mini-card',
+  '.buscador',
+  '.campo',
+  '.boton--secundario',
+].join(',');
+
+// Reflector global + brillo radial que sigue al puntero en tarjetas, campos y botones.
 export function useSpotlight() {
   useEffect(() => {
     if (prefiereMenosMovimiento()) return undefined;
@@ -54,11 +83,24 @@ export function useSpotlight() {
     const actualizar = () => {
       raf = 0;
       if (!ultimoEvento) return;
-      const objetivo = ultimoEvento.target?.closest?.('.lujo-brillo');
-      if (!objetivo) return;
-      const rect = objetivo.getBoundingClientRect();
-      objetivo.style.setProperty('--mx', `${ultimoEvento.clientX - rect.left}px`);
-      objetivo.style.setProperty('--my', `${ultimoEvento.clientY - rect.top}px`);
+      const { clientX, clientY } = ultimoEvento;
+
+      // Reflector ambiental global del espacio de trabajo
+      document.documentElement.style.setProperty('--gx', `${clientX}px`);
+      document.documentElement.style.setProperty('--gy', `${clientY}px`);
+
+      // Actualiza las superficies iluminables anidadas bajo el cursor (máx. 3 niveles)
+      let nodo = ultimoEvento.target instanceof Element ? ultimoEvento.target : null;
+      let count = 0;
+      while (nodo && count < 3) {
+        const match = nodo.closest(SELECTOR_LUZ);
+        if (!match) break;
+        const rect = match.getBoundingClientRect();
+        match.style.setProperty('--mx', `${clientX - rect.left}px`);
+        match.style.setProperty('--my', `${clientY - rect.top}px`);
+        count += 1;
+        nodo = match.parentElement;
+      }
     };
 
     const alMover = (e) => {

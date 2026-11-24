@@ -145,3 +145,98 @@ export async function diasConCompras(q, { desde, hasta }) {
   for (const f of filas) dias[f.dia] = f.compras;
   return dias;
 }
+
+// Analítica filtrada para gráficas y rankings dentro de la pantalla de Compras.
+export async function analitica(q, opciones) {
+  const { where, valores } = filtros(opciones);
+  const diasRango = Math.max(
+    1,
+    Math.round((Date.parse(`${opciones.hasta}T00:00:00Z`) - Date.parse(`${opciones.desde}T00:00:00Z`)) / 86_400_000) + 1,
+  );
+  const paso = diasRango <= 92 ? 'day' : diasRango <= 400 ? 'week' : 'month';
+  const granularidad = { day: 'dia', week: 'semana', month: 'mes' }[paso];
+
+  const [serieRows, provRows, prodRows, empRows, maxRow] = await Promise.all([
+    q(
+      `with c_f as (select c.folio_c, c.fecha ${FROM_COMPRA} ${where})
+       select to_char(date_trunc('${paso}', c_f.fecha)::date, 'YYYY-MM-DD') as periodo,
+              count(distinct c_f.folio_c)::int as compras,
+              coalesce(sum(calcular_total_compra(c_f.folio_c)), 0) as gasto
+       from c_f
+       group by 1
+       order by 1`,
+      valores,
+    ),
+    q(
+      `with c_f as (select c.folio_c, p.nombre as proveedor, p.ciudad ${FROM_COMPRA} ${where})
+       select c_f.proveedor as nombre, c_f.ciudad,
+              count(*)::int as compras,
+              coalesce(sum(calcular_total_compra(c_f.folio_c)), 0) as gasto
+       from c_f
+       group by 1, 2
+       order by 4 desc
+       limit 8`,
+      valores,
+    ),
+    q(
+      `with c_f as (select c.folio_c ${FROM_COMPRA} ${where})
+       select pr.codigo, pr.descripcion, pr.unidad_medida,
+              sum(dc.cantidad) as cantidad,
+              sum(dc.cantidad * coalesce(dc.precio_unitario, pr.precio_c)) as gasto
+       from c_f
+       join detalle_compra dc on dc.folio_c = c_f.folio_c
+       join producto pr on pr.codigo = dc.codigo
+       group by pr.codigo, pr.descripcion, pr.unidad_medida
+       order by 5 desc
+       limit 6`,
+      valores,
+    ),
+    q(
+      `with c_f as (select c.folio_c, coalesce(e.nombre, 'sin registro') as empleado ${FROM_COMPRA} ${where})
+       select c_f.empleado as nombre,
+              count(*)::int as compras,
+              coalesce(sum(calcular_total_compra(c_f.folio_c)), 0) as gasto
+       from c_f
+       group by 1
+       order by 3 desc
+       limit 6`,
+      valores,
+    ),
+    q(
+      `with c_f as (select c.folio_c ${FROM_COMPRA} ${where})
+       select max(calcular_total_compra(c_f.folio_c)) as max_total
+       from c_f`,
+      valores,
+    ),
+  ]);
+
+  return {
+    compraMaxima: num(maxRow[0]?.max_total ?? 0),
+    serie: {
+      granularidad,
+      puntos: serieRows.map((f) => ({
+        periodo: f.periodo,
+        compras: f.compras,
+        gasto: Math.round(num(f.gasto) * 100) / 100,
+      })),
+    },
+    porProveedor: provRows.map((f) => ({
+      nombre: f.nombre,
+      ciudad: f.ciudad,
+      compras: f.compras,
+      gasto: Math.round(num(f.gasto) * 100) / 100,
+    })),
+    topProductos: prodRows.map((f) => ({
+      codigo: f.codigo,
+      descripcion: f.descripcion,
+      unidadMedida: f.unidad_medida,
+      cantidad: num(f.cantidad),
+      gasto: Math.round(num(f.gasto) * 100) / 100,
+    })),
+    porEmpleado: empRows.map((f) => ({
+      nombre: f.nombre,
+      compras: f.compras,
+      gasto: Math.round(num(f.gasto) * 100) / 100,
+    })),
+  };
+}

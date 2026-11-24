@@ -11,7 +11,7 @@ Sistema web de gestión para frutería (Node.js + Express + React + PostgreSQL) 
 ## Integrantes
 
 1. Mendoza Duran Juan Francisco
-2. _[Completar nombre]_
+2. Caballero García Nayeli Itzel
 3. Martinez Miguel Jonathan Eliezer
 4. _[Completar nombre]_
 5. _[Completar nombre]_

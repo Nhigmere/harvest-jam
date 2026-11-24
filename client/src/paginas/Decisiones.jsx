@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   LuBookmarkCheck, LuChevronDown, LuCircleAlert, LuCircleCheck, LuCircleHelp, LuClock, LuCompass, LuDownload,
-  LuEye, LuFilter, LuHourglass, LuInfo, LuPackagePlus, LuPrinter, LuRefreshCw, LuRotateCcw, LuShieldAlert,
-  LuSlidersHorizontal, LuTag, LuTrendingUp, LuTriangleAlert, LuTruck, LuWallet, LuX,
+  LuEye, LuFilter, LuHistory, LuHourglass, LuInfo, LuPackagePlus, LuPrinter, LuRefreshCw, LuRotateCcw, LuShieldAlert,
+  LuShoppingCart, LuSlidersHorizontal, LuTag, LuTrendingUp, LuTriangleAlert, LuTruck, LuWallet, LuX,
 } from 'react-icons/lu';
 import { api } from '../api.js';
 import { useSesion } from '../auth.jsx';
@@ -11,7 +11,7 @@ import { Modal, useDialogos } from '../componentes/dialogos.jsx';
 import { ContadorAnimado, EsqueletoDashboard } from '../componentes/Efectos.jsx';
 import { Tabla } from '../componentes/Tabla.jsx';
 import {
-  Boton, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Panel, Segmentado, Vacio,
+  Boton, Buscador, CabeceraPagina, Campo, Cargando, Insignia, MensajeError, Paginacion, Panel, Segmentado, Vacio,
 } from '../componentes/ui.jsx';
 import { abreviaturaUnidad, cantidad, fecha, fechaHora, moneda, monedaRedonda, numero, porcentaje } from '../formato.js';
 import { useApi } from '../hooks.js';
@@ -25,6 +25,42 @@ const PRIORIDAD_META = {
   sobreabastecido: { etiqueta: 'Riesgo merma', tono: 'info' },
   insuficientes: { etiqueta: 'Faltan ventas', tono: 'neutro' },
 };
+
+// Formateo visual de días enteros (sin alterar el cálculo interno exacto).
+function diasRedondeados(valor, { corto = false, capital = false } = {}) {
+  if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return '—';
+  const abs = Math.abs(Number(valor));
+  if (abs === 0) return corto ? '0 d' : '0 días';
+  if (abs < 1) {
+    if (corto) return '< 1 d';
+    return capital ? 'Menos de 1 día' : 'menos de 1 día';
+  }
+  const ent = Math.round(abs);
+  if (corto) return `${ent} d`;
+  return `${ent} ${ent === 1 ? 'día' : 'días'}`;
+}
+
+function margenRedondeado(valor, { corto = false } = {}) {
+  if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return '—';
+  const n = Number(valor);
+  if (n === 0) return corto ? '0 d' : '0 días';
+  const signo = n > 0 ? '+' : '−';
+  const abs = Math.abs(n);
+  if (abs < 1) return corto ? `${signo}<1 d` : `${signo} menos de 1 día`;
+  const ent = Math.round(abs);
+  return corto ? `${signo}${ent} d` : `${signo}${ent} ${ent === 1 ? 'día' : 'días'}`;
+}
+
+function textoFaltaDias(valorAbs, { corto = false, capital = false } = {}) {
+  const abs = Math.abs(Number(valorAbs || 0));
+  if (abs < 1) {
+    const verbo = capital ? 'Falta' : 'falta';
+    return corto ? `${verbo} < 1 d` : `${verbo} menos de 1 día`;
+  }
+  const ent = Math.round(abs);
+  const verbo = ent === 1 ? (capital ? 'Falta' : 'falta') : (capital ? 'Faltan' : 'faltan');
+  return corto ? `${verbo} ${ent} d` : `${verbo} ${ent} ${ent === 1 ? 'día' : 'días'}`;
+}
 
 const VEREDICTO_META = {
   critica: {
@@ -159,7 +195,7 @@ function ModalPorQue({ item, parametros, fechaCorte, puedeComprar, alCerrar }) {
                     <>
                       Se vende a <strong>{item.demandaDiaria.toFixed(2)} {unidadCorta}/día</strong> ({item.diasConVentas} de {ventana} días)
                       → tus <strong>{cantidad(item.existencia, item.unidadMedida)}</strong> cubren{' '}
-                      <strong>{item.diasCobertura !== null ? `${item.diasCobertura.toFixed(1)} días` : 'sin demanda'}</strong>.
+                      <strong>{item.diasCobertura !== null ? diasRedondeados(item.diasCobertura) : 'sin demanda'}</strong>.
                     </>
                   )}
                 </span>
@@ -172,8 +208,8 @@ function ModalPorQue({ item, parametros, fechaCorte, puedeComprar, alCerrar }) {
                     El proveedor tarda <strong>{item.diasEntregaEfectivos} {item.diasEntregaEfectivos === 1 ? 'día' : 'días'}</strong> en surtir
                     {item.margenEntrega !== null && (
                       item.margenEntrega < 0
-                        ? <> → <strong className="dss-motivo--peligro">faltan {Math.abs(item.margenEntrega).toFixed(1)} días</strong> antes de que llegue el pedido.</>
-                        : <> → tienes un margen de <strong>+{item.margenEntrega.toFixed(1)} días</strong> antes de agotar stock.</>
+                        ? <> → <strong className="dss-motivo--peligro">{textoFaltaDias(item.margenEntrega)}</strong> antes de que llegue el pedido.</>
+                        : <> → tienes un margen de <strong>{margenRedondeado(item.margenEntrega)}</strong> antes de agotar stock.</>
                     )}
                   </span>
                 </li>
@@ -184,8 +220,9 @@ function ModalPorQue({ item, parametros, fechaCorte, puedeComprar, alCerrar }) {
                 <span>
                   {item.prioridad === 'sobreabastecido' ? (
                     <>
-                      Cobertura de <strong>{item.diasCobertura?.toFixed(1)} días</strong> supera su vida útil de{' '}
-                      <strong>{item.vidaUtilDias} días</strong> (exceso de <strong>+{excesoMerma.toFixed(1)} días</strong>).
+                      Cobertura de <strong>{diasRedondeados(item.diasCobertura)}</strong> supera su vida útil de{' '}
+                      <strong>{item.vidaUtilDias} {item.vidaUtilDias === 1 ? 'día' : 'días'}</strong> (exceso de{' '}
+                      <strong>+{diasRedondeados(excesoMerma)}</strong>).
                     </>
                   ) : item.existencia < item.stockMinimo ? (
                     <>
@@ -227,9 +264,9 @@ function ModalPorQue({ item, parametros, fechaCorte, puedeComprar, alCerrar }) {
             <div><dt>Existencia</dt><dd>{cantidad(item.existencia, item.unidadMedida)}</dd></div>
             <div><dt>Stock mínimo</dt><dd>{cantidad(item.stockMinimo, item.unidadMedida)}</dd></div>
             <div><dt>Venta diaria</dt><dd>{item.demandaDiaria.toFixed(2)} {abreviaturaUnidad(item.unidadMedida)}/día</dd></div>
-            <div><dt>Alcanza para</dt><dd>{item.diasCobertura !== null ? `${item.diasCobertura.toFixed(1)} días` : 'Sin ventas'}</dd></div>
-            <div><dt>Plazo de entrega</dt><dd>{item.diasEntregaEfectivos} días</dd></div>
-            <div><dt>Colchón de entrega</dt><dd>{item.margenEntrega !== null ? `${item.margenEntrega >= 0 ? '+' : ''}${item.margenEntrega.toFixed(1)} días` : '—'}</dd></div>
+            <div><dt>Alcanza para</dt><dd>{item.diasCobertura !== null ? diasRedondeados(item.diasCobertura, { capital: true }) : 'Sin ventas'}</dd></div>
+            <div><dt>Plazo de entrega</dt><dd>{item.diasEntregaEfectivos} {item.diasEntregaEfectivos === 1 ? 'día' : 'días'}</dd></div>
+            <div><dt>Colchón de entrega</dt><dd>{margenRedondeado(item.margenEntrega)}</dd></div>
             <div><dt>Vida útil</dt><dd>{item.vidaUtilDias} días</dd></div>
             <div><dt>Ganancia</dt><dd>{porcentaje(item.margenPct, 1)}</dd></div>
           </dl>
@@ -335,6 +372,7 @@ function PanelKpiDesplegable({
   alCerrar,
   alAbrirDetalle,
   alFiltrarTabla,
+  alAbrirLiquidacion,
   alAplicarEscenario,
 }) {
   const [busquedaKpi, setBusquedaKpi] = useState('');
@@ -453,9 +491,14 @@ function PanelKpiDesplegable({
 
               <div className="dss-kpi-panel__acciones">
                 {kpiActivo === 'merma' && listaMerma.length > 0 && (
-                  <span className="dss-kpi-chip dss-kpi-chip--aviso numeros">
-                    Capital en riesgo a costo: <strong>{monedaRedonda(capitalEnMerma)}</strong>
-                  </span>
+                  <>
+                    <span className="dss-kpi-chip dss-kpi-chip--aviso numeros">
+                      Capital en riesgo a costo: <strong>{monedaRedonda(capitalEnMerma)}</strong>
+                    </span>
+                    <Boton variante="primario" talla="chico" icono={LuTag} onClick={alAbrirLiquidacion}>
+                      Plan de liquidación
+                    </Boton>
+                  </>
                 )}
                 {kpiActivo === 'inversion' && resumen?.presupuesto !== null && listaInversion.length > 0 && (
                   <span className="dss-kpi-chip numeros">
@@ -580,12 +623,12 @@ function PanelKpiDesplegable({
                         )}
                         {kpiActivo === 'cobertura' && (
                           <Insignia tono={r.diasCobertura < 7 ? 'critico' : r.riesgoMerma ? 'aviso' : 'ok'} icono={false}>
-                            {r.diasCobertura.toFixed(1)} d
+                            {diasRedondeados(r.diasCobertura, { corto: true })}
                           </Insignia>
                         )}
                         {kpiActivo === 'merma' && (
                           <Insignia tono="aviso" icono={false}>
-                            +{excesoMerma.toFixed(1)} d exceso
+                            +{diasRedondeados(excesoMerma, { corto: true })} exceso
                           </Insignia>
                         )}
                         {kpiActivo === 'insuficientes' && (
@@ -607,7 +650,7 @@ function PanelKpiDesplegable({
                       {kpiActivo === 'urgentes' && (
                         <div className="dss-kpi-item__datos">
                           <div><span>Stock / Mín</span><strong className="numeros">{cantidad(r.existencia, r.unidadMedida)} / {r.stockMinimo}</strong></div>
-                          <div><span>Margen entrega</span><strong className="numeros" style={{ color: (r.margenEntrega ?? 0) < 0 ? 'var(--danger-text)' : 'var(--warning-text)' }}>{r.margenEntrega !== null ? `${r.margenEntrega >= 0 ? '+' : ''}${r.margenEntrega.toFixed(1)} d` : '—'}</strong></div>
+                          <div><span>Margen entrega</span><strong className="numeros" style={{ color: (r.margenEntrega ?? 0) < 0 ? 'var(--danger-text)' : 'var(--warning-text)' }}>{margenRedondeado(r.margenEntrega, { corto: true })}</strong></div>
                           <div><span>Sugerido</span><strong className="numeros">{cantidad(r.cantidadSugerida, r.unidadMedida)}</strong></div>
                         </div>
                       )}
@@ -624,7 +667,7 @@ function PanelKpiDesplegable({
                         <>
                           <div className="dss-kpi-item__datos">
                             <div><span>Existencia</span><strong className="numeros">{cantidad(r.existencia, r.unidadMedida)}</strong></div>
-                            <div><span>Cobertura / Vida</span><strong className="numeros">{r.diasCobertura !== null ? `${r.diasCobertura.toFixed(1)} d` : '—'} / {r.vidaUtilDias} d</strong></div>
+                            <div><span>Cobertura / Vida</span><strong className="numeros">{diasRedondeados(r.diasCobertura, { corto: true })} / {r.vidaUtilDias} d</strong></div>
                             <div>
                               <span>{r.liquidacion ? r.liquidacion.etiqueta : 'Valor a costo'}</span>
                               <strong className="numeros" style={r.liquidacion ? { color: 'var(--accent-bright)' } : undefined}>
@@ -903,6 +946,11 @@ function PanelLiquidacionMerma({
 }) {
   const [nivelFiltro, setNivelFiltro] = useState('todos');
   const [buscarLiq, setBuscarLiq] = useState('');
+  const [paginaLiq, setPaginaLiq] = useState(1);
+
+  useEffect(() => {
+    setPaginaLiq(1);
+  }, [nivelFiltro, buscarLiq]);
 
   const enMerma = useMemo(
     () => recomendaciones
@@ -933,7 +981,24 @@ function PanelLiquidacionMerma({
     && (!q || r.descripcion.toLowerCase().includes(q) || String(r.codigo) === q)
   ));
 
-  if (!enMerma.length) return null;
+  const POR_PAGINA = 9;
+  const paginados = useMemo(() => {
+    const inicio = (paginaLiq - 1) * POR_PAGINA;
+    return visibles.slice(inicio, inicio + POR_PAGINA);
+  }, [visibles, paginaLiq]);
+
+  if (!enMerma.length) {
+    return (
+      <Panel
+        titulo="Plan de liquidación para evitar merma (sin perder dinero)"
+        descripcion="Cuando algún producto rebase su vida útil aparecerá aquí con su precio sugerido para moverlo sin pérdida."
+      >
+        <Vacio icono={LuCircleCheck} titulo="Ningún producto está en riesgo de merma">
+          Toda tu mercancía perecedera está dentro de su vida útil bajo el escenario actual.
+        </Vacio>
+      </Panel>
+    );
+  }
 
   return (
     <Panel
@@ -978,9 +1043,10 @@ function PanelLiquidacionMerma({
         </div>
       </div>
 
-      {visibles.length ? (
-        <div className="dss-liq-grid">
-          {visibles.map((r) => {
+      {paginados.length ? (
+        <>
+          <div className="dss-liq-grid dss-stagger">
+            {paginados.map((r) => {
             const l = r.liquidacion;
             const precioYaAplicado = preciosAplicados[r.codigo];
             const yaIgualAlSugerido = Math.abs((precioYaAplicado ?? l.precioActual) - l.precioSugerido) < 0.01;
@@ -992,7 +1058,7 @@ function PanelLiquidacionMerma({
                   <div className="dss-liq-card__identidad">
                     <h3 className="dss-liq-card__nombre">{r.descripcion}</h3>
                     <span className="dss-liq-card__meta">
-                      #{r.codigo} · Stock {cantidad(r.existencia, r.unidadMedida)} · dura {r.diasCobertura?.toFixed(1)} d vs vida {r.vidaUtilDias} d
+                      #{r.codigo} · Stock {cantidad(r.existencia, r.unidadMedida)} · dura {diasRedondeados(r.diasCobertura, { corto: true })} vs vida {r.vidaUtilDias} d
                     </span>
                   </div>
                   <Insignia tono={NIVEL_LIQ_TONO[l.nivel] ?? 'aviso'} icono={false}>
@@ -1058,7 +1124,13 @@ function PanelLiquidacionMerma({
               </article>
             );
           })}
-        </div>
+          </div>
+          {visibles.length > POR_PAGINA && (
+            <div className="dss-liq-paginacion">
+              <Paginacion pagina={paginaLiq} limite={POR_PAGINA} total={visibles.length} alCambiar={setPaginaLiq} />
+            </div>
+          )}
+        </>
       ) : (
         <p className="texto-3" style={{ textAlign: 'center', padding: '18px 0', fontSize: '0.85rem' }}>
           Ningún producto en merma coincide con ese filtro.
@@ -1078,6 +1150,10 @@ export default function Decisiones() {
   const [extraEntrega, setExtraEntrega] = useState(0);
   const [coberturaObjetivo, setCoberturaObjetivo] = useState(7);
   const [presupuesto, setPresupuesto] = useState('');
+
+  // Vista activa del espacio de trabajo y controles plegables
+  const [seccionActiva, setSeccionActiva] = useState('comprar');
+  const [mostrarAjustesRapidos, setMostrarAjustesRapidos] = useState(false);
 
   // Filtros de tabla, KPI desplegado y foto seleccionada
   const [kpiActivo, setKpiActivo] = useState(null);
@@ -1129,6 +1205,7 @@ export default function Decisiones() {
     setFactorDemanda(foto.factorDemanda ?? 1);
     setExtraEntrega(foto.extraEntrega ?? 0);
     setPresupuesto(foto.presupuesto !== null && foto.presupuesto !== undefined ? String(foto.presupuesto) : '');
+    setSeccionActiva('comprar');
     avisar(`Se cargaron los parámetros de la foto #${foto.id} (${foto.escenario}) en el simulador.`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1250,7 +1327,7 @@ export default function Decisiones() {
                 {
                   id: 'cobertura',
                   etiqueta: 'Cobertura promedio',
-                  valor: res.coberturaPromedio !== null ? `${res.coberturaPromedio} días` : '—',
+                  valor: res.coberturaPromedio !== null ? diasRedondeados(res.coberturaPromedio, { capital: true }) : '—',
                   detalle: `Ventana ${ev.parametros.ventanaDias} días`,
                 },
                 {
@@ -1298,128 +1375,16 @@ export default function Decisiones() {
               alAbrirDetalle={(item) => setDetalle(item)}
               alFiltrarTabla={(prioridad) => {
                 setFiltroPrioridad(prioridad);
+                setSeccionActiva('comprar');
+                setKpiActivo(null);
+              }}
+              alAbrirLiquidacion={() => {
+                setSeccionActiva('liquidar');
                 setKpiActivo(null);
               }}
               alAplicarEscenario={(esc) => aplicarEscenario(esc)}
             />
           </div>
-
-          {/* Comparador de 4 escenarios */}
-          <Panel
-            titulo="Comparador de escenarios"
-            descripcion="Haz clic en cualquier escenario para ver el detalle o ajusta los parámetros abajo."
-          >
-            <div className="dss-escenarios">
-              {datos.escenarios.map((esc) => {
-                const activo = escenarioActivo === esc.id;
-                return (
-                  <button
-                    key={esc.id}
-                    type="button"
-                    className={`dss-escenario ${activo ? 'dss-escenario--activo' : ''}`}
-                    onClick={() => aplicarEscenario(esc)}
-                  >
-                    <div className="dss-escenario__cabecera">
-                      <span className="dss-escenario__titulo">{esc.nombre}</span>
-                      {esc.cambiosPrioridad.length > 0 && (
-                        <Insignia tono="aviso" icono={false}>{esc.cambiosPrioridad.length} cambios</Insignia>
-                      )}
-                    </div>
-                    <p className="dss-escenario__desc">{esc.descripcion}</p>
-                    <div className="dss-escenario__metricas">
-                      <div>
-                        <span className="dss-escenario__etq">Urgentes</span>
-                        <strong className="numeros">{esc.resumen.urgentes}</strong>
-                      </div>
-                      <div>
-                        <span className="dss-escenario__etq">Pedido total</span>
-                        <strong className="numeros">{monedaRedonda(esc.resumen.montoSugerido)}</strong>
-                      </div>
-                      {esc.resumen.presupuesto !== null && (
-                        <div>
-                          <span className="dss-escenario__etq">Sin cubrir</span>
-                          <strong className="numeros" style={{ color: esc.resumen.fueraPresupuesto > 0 ? 'var(--danger-text)' : 'var(--success-text)' }}>
-                            {esc.resumen.fueraPresupuesto}
-                          </strong>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="dss-parametros">
-              <div className="dss-parametros__titulo">
-                <LuSlidersHorizontal aria-hidden="true" />
-                <span>Simular supuestos personalizados</span>
-              </div>
-              <div className="dss-parametros__grid">
-                <Campo etiqueta={`Demanda (${Math.round(factorDemanda * 100)} %)`}>
-                  {(p) => (
-                    <input
-                      {...p}
-                      type="range"
-                      min="0.6"
-                      max="1.6"
-                      step="0.05"
-                      value={factorDemanda}
-                      onChange={(e) => {
-                        setEscenarioActivo('personalizado');
-                        setFactorDemanda(Number(e.target.value));
-                      }}
-                    />
-                  )}
-                </Campo>
-
-                <Campo etiqueta="Retraso proveedor (+ días)">
-                  {(p) => (
-                    <input
-                      {...p}
-                      type="number"
-                      min="0"
-                      max="10"
-                      className="entrada numeros"
-                      value={extraEntrega}
-                      onChange={(e) => {
-                        setEscenarioActivo('personalizado');
-                        setExtraEntrega(Math.max(0, Number(e.target.value) || 0));
-                      }}
-                    />
-                  )}
-                </Campo>
-
-                <Campo etiqueta="Cobertura objetivo (días)">
-                  {(p) => (
-                    <input
-                      {...p}
-                      type="number"
-                      min="2"
-                      max="21"
-                      className="entrada numeros"
-                      value={coberturaObjetivo}
-                      onChange={(e) => setCoberturaObjetivo(Math.max(1, Number(e.target.value) || 7))}
-                    />
-                  )}
-                </Campo>
-
-                <Campo etiqueta="Presupuesto semanal ($ MXN)" opcional ayuda="Déjalo vacío para sin tope.">
-                  {(p) => (
-                    <input
-                      {...p}
-                      type="number"
-                      min="0"
-                      step="500"
-                      className="entrada numeros"
-                      placeholder="Ej. 15000"
-                      value={presupuesto}
-                      onChange={(e) => setPresupuesto(e.target.value)}
-                    />
-                  )}
-                </Campo>
-              </div>
-            </div>
-          </Panel>
 
           {res.fueraPresupuesto > 0 && (
             <div className="aviso-error" role="alert">
@@ -1431,39 +1396,192 @@ export default function Decisiones() {
             </div>
           )}
 
-          {/* Filtros de la tabla de priorización */}
-          <div className="filtros filtros--columna">
-            <div className="filtros__fila">
-              <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar producto" placeholder="Producto, código o proveedor" className="filtros__buscador" />
-              <Segmentado
-                etiqueta="Prioridad"
-                valor={filtroPrioridad}
-                alCambiar={setFiltroPrioridad}
-                opciones={[
-                  { valor: 'todos', etiqueta: 'Todos', conteo: res.total },
-                  { valor: 'critica', etiqueta: 'Pedir hoy', conteo: res.critica },
-                  { valor: 'alta', etiqueta: 'Pedir pronto', conteo: res.alta },
-                  { valor: 'media', etiqueta: 'Esta semana', conteo: res.media },
-                  { valor: 'baja', etiqueta: 'Bien surtido', conteo: res.baja },
-                  { valor: 'sobreabastecido', etiqueta: 'Riesgo merma', conteo: res.sobreabastecido },
-                  { valor: 'insuficientes', etiqueta: 'Sin datos', conteo: res.insuficientes },
-                ]}
-              />
-            </div>
-          </div>
+          {/* Barra de navegación estructurada por pestañas para evitar scroll interminable */}
+          <nav className="dss-tabs-barra" role="tablist" aria-label="Secciones de decisiones">
+            {[
+              {
+                id: 'comprar',
+                etiqueta: 'Qué comprar',
+                icono: LuShoppingCart,
+                conteo: res.total,
+                tono: res.urgentes > 0 ? 'critico' : 'neutro',
+              },
+              {
+                id: 'liquidar',
+                etiqueta: 'Liquidar merma',
+                icono: LuTag,
+                conteo: res.sobreabastecido,
+                tono: res.sobreabastecido > 0 ? 'aviso' : 'neutro',
+              },
+              {
+                id: 'escenarios',
+                etiqueta: 'Simular escenarios',
+                icono: LuSlidersHorizontal,
+                conteo: datos.escenarios?.find((e) => e.id === escenarioActivo)?.nombre ?? 'Personalizado',
+                tono: 'oro',
+              },
+              {
+                id: 'historial',
+                etiqueta: 'Fotos y fórmulas',
+                icono: LuHistory,
+                conteo: datos.corridasGuardadas.length,
+                tono: 'neutro',
+              },
+            ].map((tab) => {
+              const IconoTab = tab.icono;
+              const activa = seccionActiva === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activa}
+                  className={`dss-tab-btn ${activa ? 'dss-tab-btn--activa' : ''}`}
+                  onClick={() => setSeccionActiva(tab.id)}
+                >
+                  <IconoTab className="dss-tab-btn__icono" aria-hidden="true" />
+                  <span>{tab.etiqueta}</span>
+                  <span className={`dss-tab-btn__badge dss-tab-btn__badge--${tab.tono} numeros`}>
+                    {tab.conteo}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
 
-          {/* Tabla de recomendaciones explicables */}
-          <Panel
-            titulo="Qué conviene comprar (ordenado por urgencia)"
-            descripcion='Primero aparecen los productos que se acaban antes. Haz clic en cualquier fila o en "¿Por qué?" para ver la explicación completa.'
-          >
-            <Tabla
-              etiqueta="Recomendaciones de reabastecimiento"
-              clave="codigo"
-              cargando={cargando}
-              filas={visibles}
-              alAbrir={(r) => setDetalle(r)}
-              porPagina={30}
+          {/* VISTA 1: QUÉ COMPRAR (escenario rápido + tabla priorizada compacta) */}
+          {seccionActiva === 'comprar' && (
+            <div key="vista-comprar" className="dss-vista-etapa">
+              <div className="dss-barra-escenario glass-card">
+                <div className="dss-barra-escenario__fila">
+                  <div className="dss-barra-escenario__pills" role="group" aria-label="Cambio rápido de escenario">
+                    <span className="dss-barra-escenario__etq">Escenario:</span>
+                    {datos.escenarios.map((esc) => (
+                      <button
+                        key={esc.id}
+                        type="button"
+                        className={`dss-esc-pill ${escenarioActivo === esc.id ? 'dss-esc-pill--activo' : ''}`}
+                        onClick={() => aplicarEscenario(esc)}
+                      >
+                        {esc.nombre}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={`dss-esc-ajustes-btn ${mostrarAjustesRapidos ? 'dss-esc-ajustes-btn--abierto' : ''}`}
+                    aria-expanded={mostrarAjustesRapidos}
+                    onClick={() => setMostrarAjustesRapidos((v) => !v)}
+                  >
+                    <LuSlidersHorizontal aria-hidden="true" />
+                    <span>{mostrarAjustesRapidos ? 'Ocultar ajustes' : 'Ajustar presupuesto / demanda'}</span>
+                    <LuChevronDown className="dss-esc-ajustes-btn__flecha" aria-hidden="true" />
+                  </button>
+                </div>
+
+                <div className={`dss-ajustes-colapso ${mostrarAjustesRapidos ? 'dss-ajustes-colapso--abierto' : ''}`}>
+                  <div className="dss-ajustes-colapso__inner">
+                    <div className="dss-parametros__grid" style={{ paddingTop: 14 }}>
+                      <Campo etiqueta={`Demanda (${Math.round(factorDemanda * 100)} %)`}>
+                        {(p) => (
+                          <input
+                            {...p}
+                            type="range"
+                            min="0.6"
+                            max="1.6"
+                            step="0.05"
+                            value={factorDemanda}
+                            onChange={(e) => {
+                              setEscenarioActivo('personalizado');
+                              setFactorDemanda(Number(e.target.value));
+                            }}
+                          />
+                        )}
+                      </Campo>
+
+                      <Campo etiqueta="Retraso proveedor (+ días)">
+                        {(p) => (
+                          <input
+                            {...p}
+                            type="number"
+                            min="0"
+                            max="10"
+                            className="entrada numeros"
+                            value={extraEntrega}
+                            onChange={(e) => {
+                              setEscenarioActivo('personalizado');
+                              setExtraEntrega(Math.max(0, Number(e.target.value) || 0));
+                            }}
+                          />
+                        )}
+                      </Campo>
+
+                      <Campo etiqueta="Cobertura objetivo (días)">
+                        {(p) => (
+                          <input
+                            {...p}
+                            type="number"
+                            min="2"
+                            max="21"
+                            className="entrada numeros"
+                            value={coberturaObjetivo}
+                            onChange={(e) => setCoberturaObjetivo(Math.max(1, Number(e.target.value) || 7))}
+                          />
+                        )}
+                      </Campo>
+
+                      <Campo etiqueta="Presupuesto semanal ($ MXN)" opcional ayuda="Déjalo vacío para sin tope.">
+                        {(p) => (
+                          <input
+                            {...p}
+                            type="number"
+                            min="0"
+                            step="500"
+                            className="entrada numeros"
+                            placeholder="Ej. 15000"
+                            value={presupuesto}
+                            onChange={(e) => setPresupuesto(e.target.value)}
+                          />
+                        )}
+                      </Campo>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filtros de la tabla de priorización */}
+              <div className="filtros filtros--columna">
+                <div className="filtros__fila">
+                  <Buscador valor={busqueda} alCambiar={setBusqueda} etiqueta="Buscar producto" placeholder="Producto, código o proveedor" className="filtros__buscador" />
+                  <Segmentado
+                    etiqueta="Prioridad"
+                    valor={filtroPrioridad}
+                    alCambiar={setFiltroPrioridad}
+                    opciones={[
+                      { valor: 'todos', etiqueta: 'Todos', conteo: res.total },
+                      { valor: 'critica', etiqueta: 'Pedir hoy', conteo: res.critica },
+                      { valor: 'alta', etiqueta: 'Pedir pronto', conteo: res.alta },
+                      { valor: 'media', etiqueta: 'Esta semana', conteo: res.media },
+                      { valor: 'baja', etiqueta: 'Bien surtido', conteo: res.baja },
+                      { valor: 'sobreabastecido', etiqueta: 'Riesgo merma', conteo: res.sobreabastecido },
+                      { valor: 'insuficientes', etiqueta: 'Sin datos', conteo: res.insuficientes },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              {/* Tabla de recomendaciones explicables */}
+              <Panel
+                titulo="Qué conviene comprar (ordenado por urgencia)"
+                descripcion='Primero aparecen los productos que se acaban antes. Haz clic en cualquier fila o en "¿Por qué?" para ver la explicación completa.'
+              >
+                <Tabla
+                  etiqueta="Recomendaciones de reabastecimiento"
+                  clave="codigo"
+                  cargando={cargando}
+                  filas={visibles}
+                  alAbrir={(r) => setDetalle(r)}
+                  porPagina={12}
               columnas={[
                 {
                   clave: 'descripcion', titulo: 'Producto', ordenable: true,
@@ -1531,7 +1649,7 @@ export default function Decisiones() {
                   render: (r) => (
                     <span className="celda-doble" style={{ alignItems: 'flex-end' }}>
                       <span className="numeros" style={{ fontWeight: 500 }}>
-                        {r.diasCobertura !== null ? `${r.diasCobertura.toFixed(1)} días` : 'Sin ventas'}
+                        {r.diasCobertura !== null ? diasRedondeados(r.diasCobertura, { capital: true }) : 'Sin ventas'}
                       </span>
                       <span
                         className="celda-doble__detalle numeros"
@@ -1546,11 +1664,11 @@ export default function Decisiones() {
                         {r.prioridad === 'insuficientes'
                           ? `Vida útil: ${r.vidaUtilDias} d`
                           : r.margenEntrega !== null && r.margenEntrega < 0
-                            ? `Faltan ${Math.abs(r.margenEntrega).toFixed(1)} d antes del surtido`
+                            ? `${textoFaltaDias(r.margenEntrega, { corto: true, capital: true })} antes del surtido`
                             : r.riesgoMerma
                               ? `Supera vida útil (${r.vidaUtilDias} d)`
                               : r.margenEntrega !== null
-                                ? `Sobra +${r.margenEntrega.toFixed(1)} d · entrega ${r.diasEntregaEfectivos} d`
+                                ? `Sobra ${margenRedondeado(r.margenEntrega, { corto: true })} · entrega ${r.diasEntregaEfectivos} d`
                                 : `Vida útil: ${r.vidaUtilDias} d`}
                       </span>
                     </span>
@@ -1618,92 +1736,228 @@ export default function Decisiones() {
               vacio={<Vacio icono={LuShieldAlert} titulo="No hay productos en esta categoría" />}
             />
           </Panel>
+            </div>
+          )}
 
-          {/* Plan de liquidación automática para productos en riesgo de merma */}
-          <PanelLiquidacionMerma
-            recomendaciones={recomendaciones}
-            puedeEditarPrecio={puede('EDITAR_PRODUCTOS')}
-            preciosAplicados={preciosAplicados}
-            aplicandoCodigo={aplicandoCodigo}
-            alAplicarPrecio={aplicarPrecioLiquidacion}
-            alAbrirDetalle={(item) => setDetalle(item)}
-          />
+          {/* VISTA 2: PLAN DE LIQUIDACIÓN POR MERMA */}
+          {seccionActiva === 'liquidar' && (
+            <div key="vista-liquidar" className="dss-vista-etapa">
+              <PanelLiquidacionMerma
+                recomendaciones={recomendaciones}
+                puedeEditarPrecio={puede('EDITAR_PRODUCTOS')}
+                preciosAplicados={preciosAplicados}
+                aplicandoCodigo={aplicandoCodigo}
+                alAplicarPrecio={aplicarPrecioLiquidacion}
+                alAbrirDetalle={(item) => setDetalle(item)}
+              />
+            </div>
+          )}
 
-          {/* Documentación en vivo de los 5 indicadores + historial de fotos guardadas */}
-          <div className="reportes__rejilla">
-            <Panel titulo="Fórmulas de indicadores" descripcion="Cómo se calcula cada métrica a partir del inventario y las ventas recientes">
-              <ul className="lista-movimientos">
-                {datos.definicionIndicadores.map((ind) => (
-                  <li key={ind.id}>
-                    <div className="lista-movimientos__fila">
-                      <span>
-                        <span className="lista-movimientos__titulo">{ind.nombre}</span>
-                        <span className="lista-movimientos__detalle">
-                          <span className="codigo-mono">{ind.formula}</span> · {ind.notas}
-                        </span>
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Panel>
-
-            <Panel
-              titulo="Fotos de decisión guardadas"
-              descripcion="Haz clic en cualquier foto para ver qué productos recomendó, compararla contra hoy o volver a cargar sus parámetros."
-            >
-              {datos.corridasGuardadas.length ? (
-                <ul className="dss-fotos-lista">
-                  {datos.corridasGuardadas.map((c) => (
-                    <li key={c.id} className="dss-foto-fila">
+          {/* VISTA 3: SIMULADOR Y COMPARADOR DE ESCENARIOS */}
+          {seccionActiva === 'escenarios' && (
+            <div key="vista-escenarios" className="dss-vista-etapa">
+              <Panel
+                titulo="Comparador de escenarios"
+                descripcion="Compara cómo cambian las prioridades y el presupuesto ante aumentos de venta o retrasos de proveedores."
+                acciones={
+                  <Boton variante="secundario" talla="chico" icono={LuShoppingCart} onClick={() => setSeccionActiva('comprar')}>
+                    Ver tabla con este escenario
+                  </Boton>
+                }
+              >
+                <div className="dss-escenarios dss-stagger">
+                  {datos.escenarios.map((esc) => {
+                    const activo = escenarioActivo === esc.id;
+                    return (
                       <button
+                        key={esc.id}
                         type="button"
-                        className="dss-foto-fila__main"
-                        onClick={() => setFotoActivaId(c.id)}
+                        className={`dss-escenario ${activo ? 'dss-escenario--activo' : ''}`}
+                        onClick={() => aplicarEscenario(esc)}
                       >
-                        <span className="dss-foto-fila__texto">
-                          <span className="dss-foto-fila__titulo">
-                            #{c.id} · {c.escenario}
-                            {c.presupuesto !== null && (
-                              <span className="dss-foto-fila__tag numeros">Tope {monedaRedonda(c.presupuesto)}</span>
-                            )}
-                          </span>
-                          <span className="dss-foto-fila__meta">
-                            {fechaHora(c.fechaHora)} · {c.ejecutadoPor} · {c.totalCritica + c.totalAlta} urgentes · Demanda {Math.round(c.factorDemanda * 100)} %
-                            {c.extraEntrega > 0 ? ` · +${c.extraEntrega} d entrega` : ''}
-                          </span>
-                        </span>
-                        <span className="dss-foto-fila__monto numeros">{monedaRedonda(c.montoSugerido)}</span>
+                        <div className="dss-escenario__cabecera">
+                          <span className="dss-escenario__titulo">{esc.nombre}</span>
+                          {esc.cambiosPrioridad.length > 0 && (
+                            <Insignia tono="aviso" icono={false}>{esc.cambiosPrioridad.length} cambios</Insignia>
+                          )}
+                        </div>
+                        <p className="dss-escenario__desc">{esc.descripcion}</p>
+                        <div className="dss-escenario__metricas">
+                          <div>
+                            <span className="dss-escenario__etq">Urgentes</span>
+                            <strong className="numeros">{esc.resumen.urgentes}</strong>
+                          </div>
+                          <div>
+                            <span className="dss-escenario__etq">Pedido total</span>
+                            <strong className="numeros">{monedaRedonda(esc.resumen.montoSugerido)}</strong>
+                          </div>
+                          {esc.resumen.presupuesto !== null && (
+                            <div>
+                              <span className="dss-escenario__etq">Sin cubrir</span>
+                              <strong className="numeros" style={{ color: esc.resumen.fueraPresupuesto > 0 ? 'var(--danger-text)' : 'var(--success-text)' }}>
+                                {esc.resumen.fueraPresupuesto}
+                              </strong>
+                            </div>
+                          )}
+                        </div>
                       </button>
+                    );
+                  })}
+                </div>
 
-                      <div className="dss-foto-fila__acciones">
-                        <button
-                          type="button"
-                          className="dss-foto-accion"
-                          title="Ver productos de esta foto"
-                          onClick={() => setFotoActivaId(c.id)}
-                        >
-                          <LuEye aria-hidden="true" /> Ver
-                        </button>
-                        <button
-                          type="button"
-                          className="dss-foto-accion dss-foto-accion--oro"
-                          title="Volver a cargar estos supuestos en el simulador"
-                          onClick={() => aplicarParametrosDeFoto(c)}
-                        >
-                          <LuRotateCcw aria-hidden="true" /> Aplicar
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <Vacio titulo="Aún no hay fotos guardadas">
-                  Pulsa «Guardar foto DSS» arriba para registrar el escenario actual y poder consultarlo o compararlo después.
-                </Vacio>
-              )}
-            </Panel>
-          </div>
+                <div className="dss-parametros">
+                  <div className="dss-parametros__titulo">
+                    <LuSlidersHorizontal aria-hidden="true" />
+                    <span>Simular supuestos personalizados</span>
+                  </div>
+                  <div className="dss-parametros__grid">
+                    <Campo etiqueta={`Demanda (${Math.round(factorDemanda * 100)} %)`}>
+                      {(p) => (
+                        <input
+                          {...p}
+                          type="range"
+                          min="0.6"
+                          max="1.6"
+                          step="0.05"
+                          value={factorDemanda}
+                          onChange={(e) => {
+                            setEscenarioActivo('personalizado');
+                            setFactorDemanda(Number(e.target.value));
+                          }}
+                        />
+                      )}
+                    </Campo>
+
+                    <Campo etiqueta="Retraso proveedor (+ días)">
+                      {(p) => (
+                        <input
+                          {...p}
+                          type="number"
+                          min="0"
+                          max="10"
+                          className="entrada numeros"
+                          value={extraEntrega}
+                          onChange={(e) => {
+                            setEscenarioActivo('personalizado');
+                            setExtraEntrega(Math.max(0, Number(e.target.value) || 0));
+                          }}
+                        />
+                      )}
+                    </Campo>
+
+                    <Campo etiqueta="Cobertura objetivo (días)">
+                      {(p) => (
+                        <input
+                          {...p}
+                          type="number"
+                          min="2"
+                          max="21"
+                          className="entrada numeros"
+                          value={coberturaObjetivo}
+                          onChange={(e) => setCoberturaObjetivo(Math.max(1, Number(e.target.value) || 7))}
+                        />
+                      )}
+                    </Campo>
+
+                    <Campo etiqueta="Presupuesto semanal ($ MXN)" opcional ayuda="Déjalo vacío para sin tope.">
+                      {(p) => (
+                        <input
+                          {...p}
+                          type="number"
+                          min="0"
+                          step="500"
+                          className="entrada numeros"
+                          placeholder="Ej. 15000"
+                          value={presupuesto}
+                          onChange={(e) => setPresupuesto(e.target.value)}
+                        />
+                      )}
+                    </Campo>
+                  </div>
+                </div>
+              </Panel>
+            </div>
+          )}
+
+          {/* VISTA 4: FOTOS GUARDADAS Y FÓRMULAS */}
+          {seccionActiva === 'historial' && (
+            <div key="vista-historial" className="dss-vista-etapa">
+              <div className="reportes__rejilla reportes__rejilla--par">
+                <Panel
+                  titulo="Fotos de decisión guardadas"
+                  descripcion="Haz clic en cualquier foto para ver qué productos recomendó, compararla contra hoy o volver a cargar sus parámetros."
+                >
+                  {datos.corridasGuardadas.length ? (
+                    <ul className="dss-fotos-lista dss-stagger">
+                      {datos.corridasGuardadas.map((c) => (
+                        <li key={c.id} className="dss-foto-fila">
+                          <button
+                            type="button"
+                            className="dss-foto-fila__main"
+                            onClick={() => setFotoActivaId(c.id)}
+                          >
+                            <span className="dss-foto-fila__texto">
+                              <span className="dss-foto-fila__titulo">
+                                #{c.id} · {c.escenario}
+                                {c.presupuesto !== null && (
+                                  <span className="dss-foto-fila__tag numeros">Tope {monedaRedonda(c.presupuesto)}</span>
+                                )}
+                              </span>
+                              <span className="dss-foto-fila__meta">
+                                {fechaHora(c.fechaHora)} · {c.ejecutadoPor} · {c.totalCritica + c.totalAlta} urgentes · Demanda {Math.round(c.factorDemanda * 100)} %
+                                {c.extraEntrega > 0 ? ` · +${c.extraEntrega} d entrega` : ''}
+                              </span>
+                            </span>
+                            <span className="dss-foto-fila__monto numeros">{monedaRedonda(c.montoSugerido)}</span>
+                          </button>
+
+                          <div className="dss-foto-fila__acciones">
+                            <button
+                              type="button"
+                              className="dss-foto-accion"
+                              title="Ver productos de esta foto"
+                              onClick={() => setFotoActivaId(c.id)}
+                            >
+                              <LuEye aria-hidden="true" /> Ver
+                            </button>
+                            <button
+                              type="button"
+                              className="dss-foto-accion dss-foto-accion--oro"
+                              title="Volver a cargar estos supuestos en el simulador"
+                              onClick={() => aplicarParametrosDeFoto(c)}
+                            >
+                              <LuRotateCcw aria-hidden="true" /> Aplicar
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <Vacio titulo="Aún no hay fotos guardadas">
+                      Pulsa «Guardar foto DSS» arriba para registrar el escenario actual y poder consultarlo o compararlo después.
+                    </Vacio>
+                  )}
+                </Panel>
+
+                <Panel titulo="Fórmulas de indicadores" descripcion="Cómo se calcula cada métrica a partir del inventario y las ventas recientes">
+                  <ul className="lista-movimientos">
+                    {datos.definicionIndicadores.map((ind) => (
+                      <li key={ind.id}>
+                        <div className="lista-movimientos__fila">
+                          <span>
+                            <span className="lista-movimientos__titulo">{ind.nombre}</span>
+                            <span className="lista-movimientos__detalle">
+                              <span className="codigo-mono">{ind.formula}</span> · {ind.notas}
+                            </span>
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </Panel>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

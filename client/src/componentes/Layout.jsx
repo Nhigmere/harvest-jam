@@ -8,6 +8,7 @@ import {
 import { useSesion } from '../auth.jsx';
 import { iniciales, nombrePropio } from '../formato.js';
 import { NavLink, useUbicacion } from '../router.jsx';
+import { TiradorZanahoriaDorada, VinetaMenuMermelada } from './ArteFruteria.jsx';
 import { PaletaComandos } from './Comandos.jsx';
 import { useSpotlight } from './Efectos.jsx';
 
@@ -60,6 +61,7 @@ export function Layout({ children, completa = false }) {
   const { pathname } = useUbicacion();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [comandosAbiertos, setComandosAbiertos] = useState(false);
+  const [jalandoZanahoria, setJalandoZanahoria] = useState(false);
   const [menuCompacto, setMenuCompacto] = useState(() => {
     try {
       return localStorage.getItem('harvest-jam:menu-compacto') === '1';
@@ -92,6 +94,8 @@ export function Layout({ children, completa = false }) {
   }, []);
 
   const alternarCompacto = useCallback(() => {
+    setJalandoZanahoria(true);
+    window.setTimeout(() => setJalandoZanahoria(false), 460);
     setMenuCompacto((prev) => {
       const siguiente = !prev;
       try {
@@ -143,6 +147,12 @@ export function Layout({ children, completa = false }) {
       </header>
 
       <aside className="menu" aria-label="Menú principal">
+        <TiradorZanahoriaDorada
+          compacto={menuCompacto}
+          jalando={jalandoZanahoria}
+          onClick={alternarCompacto}
+        />
+
         <div className="menu__marca">
           <Marca compacta={menuCompacto} />
           <button
@@ -214,6 +224,8 @@ export function Layout({ children, completa = false }) {
             );
           })}
         </nav>
+
+        {!menuCompacto && <VinetaMenuMermelada />}
 
         <div className="menu__usuario">
           <span className="menu__avatar" title={`${nombre} (${usuario.rolNombre})`} aria-hidden="true">

@@ -21,11 +21,12 @@ function leerFiltros(query) {
 router.get('/', requiere(P.VER_VENTAS), ruta(async (req, res) => {
   const filtros = leerFiltros(req.query);
   const pag = paginacion(req.query);
-  const [lista, resumen] = await Promise.all([
+  const [lista, resumen, analitica] = await Promise.all([
     ventas.listar(req.consultar, { ...filtros, ...pag }),
     ventas.resumen(req.consultar, filtros),
+    ventas.analitica(req.consultar, filtros),
   ]);
-  res.json({ ...lista, resumen, pagina: pag.pagina, limite: pag.limite, desde: filtros.desde, hasta: filtros.hasta });
+  res.json({ ...lista, resumen, analitica, pagina: pag.pagina, limite: pag.limite, desde: filtros.desde, hasta: filtros.hasta });
 }));
 
 router.get('/dias', requiere(P.VER_VENTAS), ruta(async (req, res) => {

@@ -514,7 +514,9 @@ select.entrada option {
   position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--panel-bg);
+  background:
+    radial-gradient(45% 90px at 94% 0%, rgba(201, 74, 93, 0.055), transparent 72%),
+    var(--panel-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(135%);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(135%);
   border: 1px solid var(--glass-border);
@@ -522,6 +524,23 @@ select.entrada option {
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--glass-highlight);
   min-width: 0;
   transition: border-color var(--dur-med) var(--ease-luxury), box-shadow var(--dur-med) var(--ease-luxury);
+}
+
+.panel::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 106, 0.34) 35%, rgba(201, 74, 93, 0.28) 68%, transparent);
+  opacity: 0.65;
+  pointer-events: none;
+  transition: opacity var(--dur-med) var(--ease-luxury);
+}
+
+.panel:hover::after {
+  opacity: 1;
 }
 
 .panel::after {
@@ -823,12 +842,25 @@ select.entrada option {
 }
 
 .modal__cabecera {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-4);
   padding: var(--sp-6) var(--sp-6) var(--sp-3);
   border-bottom: 1px solid var(--glass-border);
+  background: radial-gradient(60% 100% at 100% 0%, rgba(201, 74, 93, 0.08), transparent 72%);
+}
+
+.modal__cabecera::after {
+  content: '';
+  position: absolute;
+  left: var(--sp-6);
+  bottom: -1px;
+  width: min(190px, 45%);
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(212, 175, 106, 0.6), rgba(201, 74, 93, 0.4), transparent);
+  pointer-events: none;
 }
 
 .modal__cabecera h2 {
@@ -1154,13 +1186,20 @@ select.entrada option {
 .vacio__icono-caja {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   margin-bottom: var(--sp-1);
-  border: 1px solid rgba(212, 175, 106, 0.22);
-  border-radius: 12px;
-  background: radial-gradient(circle at 30% 20%, rgba(212, 175, 106, 0.12), rgba(255, 248, 235, 0.02));
+  border: 1px solid rgba(212, 175, 106, 0.26);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 70% 80%, rgba(201, 74, 93, 0.16), transparent 68%),
+    radial-gradient(circle at 30% 20%, rgba(212, 175, 106, 0.14), rgba(255, 248, 235, 0.02));
   color: var(--accent);
+}
+
+.jam-vacio-svg {
+  width: 26px !important;
+  height: 26px !important;
 }
 
 .vacio__icono {
@@ -1196,10 +1235,12 @@ select.entrada option {
 }
 
 .cargando__punto {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
+  width: 10px;
+  height: 10px;
+  border-radius: 0 50% 50% 50%;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #f3d997 0%, #c94a5d 100%);
+  box-shadow: 0 0 10px rgba(201, 74, 93, 0.42);
   animation: pulsoOro 1.4s var(--ease-luxury) infinite;
 }
 
@@ -1513,7 +1554,8 @@ select.entrada option {
 }
 
 .ranking__fila:first-child .ranking__barra {
-  box-shadow: 0 0 12px -1px rgba(212, 175, 106, 0.45), inset 0 1px 0 rgba(255, 250, 235, 0.45);
+  background: linear-gradient(90deg, #b88b42 0%, #e8c77a 58%, #d96b78 100%);
+  box-shadow: 0 0 14px -1px rgba(212, 175, 106, 0.45), inset 0 1px 0 rgba(255, 250, 235, 0.45);
 }
 
 .ranking__valor {

@@ -412,7 +412,7 @@ export default function Productos() {
         codigo: r.codigo,
         nombre: capitalizar(r.descripcion),
         sub: r.riesgoMerma
-          ? `Cobertura ${r.diasCobertura?.toFixed(1) ?? '—'} d > vida útil ${r.vidaUtilDias} d`
+          ? `Cobertura ${r.diasCobertura !== null ? (r.diasCobertura < 1 ? '< 1' : Math.round(r.diasCobertura)) : '—'} d > vida útil ${r.vidaUtilDias} d`
           : `Vida útil ${r.vidaUtilDias} días · stock ${cantidad(r.existencia, r.unidadMedida)}`,
         badge: r.riesgoMerma ? { texto: 'Merma', tono: 'aviso' } : { texto: `${r.vidaUtilDias} d`, tono: 'info' },
         raw: mapaProductos.get(r.codigo),

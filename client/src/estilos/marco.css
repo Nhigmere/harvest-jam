@@ -49,10 +49,19 @@
   height: 34px;
   border: 1px solid rgba(212, 175, 106, 0.34);
   border-radius: 10px;
-  background: linear-gradient(145deg, rgba(212, 175, 106, 0.16), rgba(212, 175, 106, 0.03));
-  box-shadow: inset 0 1px 0 rgba(255, 240, 206, 0.2), 0 4px 12px rgba(0, 0, 0, 0.35);
+  background:
+    radial-gradient(80% 70% at 30% 85%, rgba(196, 74, 93, 0.28), transparent 72%),
+    linear-gradient(145deg, rgba(212, 175, 106, 0.18), rgba(212, 175, 106, 0.03));
+  box-shadow: inset 0 1px 0 rgba(255, 240, 206, 0.24), 0 4px 12px rgba(0, 0, 0, 0.35);
   flex: none;
   overflow: hidden;
+  transition: transform 280ms var(--ease-luxury), border-color var(--dur-fast) var(--ease-snappy), box-shadow var(--dur-med) var(--ease-luxury);
+}
+
+.marca:hover .marca__frasco {
+  transform: rotate(-4deg) scale(1.05);
+  border-color: rgba(240, 213, 153, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 244, 214, 0.35), 0 6px 18px -4px rgba(196, 74, 93, 0.32);
 }
 
 .marca__texto {
@@ -85,6 +94,7 @@
 .menu {
   position: sticky;
   top: var(--sp-4);
+  z-index: 15;
   display: flex;
   flex-direction: column;
   width: 264px;
@@ -95,13 +105,105 @@
   border-radius: var(--radius-card);
   background:
     radial-gradient(95% 130px at 18% 0%, rgba(212, 175, 106, 0.085), transparent 72%),
+    radial-gradient(80% 110px at 85% 100%, rgba(184, 58, 75, 0.065), transparent 72%),
     var(--sidebar-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(135%);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(135%);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--glass-highlight);
   color: var(--text-secondary);
-  overflow: hidden;
+  overflow: visible;
   transition: width var(--dur-med) var(--ease-luxury), padding var(--dur-med) var(--ease-luxury);
+}
+
+/* --- Tirador colgante: Zanahoria dorada con hilito para jalar la barra lateral --- */
+@keyframes penduloZanahoria {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(9deg); }
+  75% { transform: rotate(-7deg); }
+}
+
+@keyframes jalonZanahoria {
+  0% { transform: translateY(0) scale(1); }
+  38% { transform: translateY(11px) scale(0.96, 1.08); }
+  70% { transform: translateY(-3px) scale(1.03, 0.97); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.menu-tirador {
+  position: absolute;
+  top: 56px;
+  right: -21px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 34px;
+  padding: 0 0 4px;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  transform-origin: top center;
+  transition: right var(--dur-med) var(--ease-luxury);
+}
+
+.menu-tirador:active {
+  cursor: grabbing;
+}
+
+.menu-tirador__ojillo {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid #e6c67e;
+  background: #1a1610;
+  box-shadow: 0 0 8px rgba(212, 175, 106, 0.45);
+  flex: none;
+}
+
+.menu-tirador__hilito {
+  width: 1.5px;
+  height: 20px;
+  margin-top: -1px;
+  background: linear-gradient(180deg, #f3d997 0%, #c49b52 100%);
+  transform-origin: top center;
+  transition: height 280ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms ease;
+}
+
+.menu-tirador:hover .menu-tirador__hilito {
+  height: 27px;
+}
+
+.menu-tirador--jalando .menu-tirador__hilito {
+  height: 31px;
+}
+
+.menu-tirador__dije {
+  display: grid;
+  place-items: center;
+  margin-top: -3px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 8px rgba(212, 175, 106, 0.25));
+  transform-origin: top center;
+  transition: transform 280ms var(--ease-luxury), filter 260ms ease;
+}
+
+.menu-tirador:hover .menu-tirador__dije {
+  animation: penduloZanahoria 1.5s ease-in-out infinite;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 12px rgba(240, 213, 153, 0.52));
+}
+
+.menu-tirador--jalando .menu-tirador__dije {
+  animation: jalonZanahoria 440ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.menu-tirador--compacto .menu-tirador__ojillo {
+  border-color: #f3d997;
+  box-shadow: 0 0 10px rgba(212, 175, 106, 0.7);
+}
+
+.menu-tirador__svg {
+  width: 24px;
+  height: 38px;
+  overflow: visible;
 }
 
 .menu__marca {
@@ -529,6 +631,7 @@
   flex-wrap: wrap;
   padding-bottom: var(--sp-5);
   border-bottom: 1px solid rgba(235, 222, 196, 0.075);
+  overflow: hidden;
 }
 
 .cabecera-pagina::after {
@@ -536,10 +639,88 @@
   position: absolute;
   left: 0;
   bottom: -1px;
-  width: min(260px, 45%);
-  height: 1px;
-  background: linear-gradient(90deg, rgba(212, 175, 106, 0.45), transparent);
+  width: min(320px, 52%);
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(212, 175, 106, 0.65) 0%, rgba(196, 74, 93, 0.42) 52%, transparent 100%);
   pointer-events: none;
+}
+
+.cabecera-pagina__texto,
+.cabecera-pagina__acciones {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Ornamentos Harvest JAM (frasco de mermelada, cítrico y gota) --- */
+@keyframes jamFlotar {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(1.6deg); }
+}
+
+@keyframes jamGotaCaer {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.5; }
+  55% { transform: translateY(4px) scale(1.06, 1.12); opacity: 0.92; }
+}
+
+.jam-ornamento {
+  pointer-events: none;
+  user-select: none;
+}
+
+.jam-ornamento--cabecera {
+  position: absolute;
+  right: 8px;
+  bottom: 2px;
+  width: 170px;
+  height: 70px;
+  opacity: 0.65;
+  z-index: 0;
+}
+
+.jam-ornamento--login {
+  position: absolute;
+  right: 24px;
+  top: 24px;
+  width: 240px;
+  height: 165px;
+  opacity: 0.85;
+  z-index: 0;
+}
+
+.jam-flotar-a { animation: jamFlotar 7.5s ease-in-out infinite; transform-origin: center; }
+.jam-flotar-b { animation: jamFlotar 9s ease-in-out infinite reverse; transform-origin: center; }
+.jam-flotar-c { animation: jamFlotar 6.5s ease-in-out infinite; transform-origin: center; }
+.jam-gota { animation: jamGotaCaer 4.2s ease-in-out infinite; transform-origin: center top; }
+
+/* Micro-animación fluida en íconos del menú lateral */
+.menu__enlace svg {
+  transition: transform 220ms var(--ease-luxury), color var(--dur-fast) var(--ease-snappy);
+}
+
+.menu__enlace:hover svg {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+.menu__enlace--activo::before {
+  background: linear-gradient(180deg, #f3d997 0%, #c94a5d 100%) !important;
+  box-shadow: 0 0 10px rgba(201, 74, 93, 0.55) !important;
+}
+
+.menu-vineta {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 8px;
+  opacity: 0.8;
+  transition: opacity 240ms ease;
+}
+
+.menu-vineta:hover {
+  opacity: 1;
+}
+
+.menu-vineta__svg {
+  width: 88px;
+  height: 22px;
 }
 
 .cabecera-pagina__texto {
@@ -789,7 +970,8 @@
     transform: none;
   }
 
-  .menu__colapsar {
+  .menu__colapsar,
+  .menu-tirador {
     display: none;
   }
 

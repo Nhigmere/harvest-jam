@@ -167,27 +167,36 @@ export async function porHora(q, { desde, hasta }) {
 }
 
 // "Reporte completo de ventas": un renglón por venta con sus productos.
-export async function ventasDetalladas(q, { desde, hasta, limite, offset }) {
+export async function ventasDetalladas(q, { desde, hasta, limite, offset, buscar = null }) {
+  const filtro = buscar ? `%${buscar.trim().toLowerCase()}%` : null;
   const filas = await q(
-    `select v.folio_v, to_char(v.fecha, 'YYYY-MM-DD"T"HH24:MI:SS') as fecha,
-            coalesce(pf.nombre, pm.razon_social, 'sin nombre') as cliente,
-            case when pf.id_c is not null then 'fisica' else 'moral' end as tipo_cliente,
-            e.nombre as empleado,
-            string_agg(p.descripcion, ', ' order by p.descripcion) as productos,
-            sum(dv.cantidad * dv.precio_unitario) as total,
-            count(*) over ()::int as total_filas
-     from venta v
-     join detalle_venta dv on dv.folio_v = v.folio_v
-     join producto p on p.codigo = dv.codigo
-     left join cliente c on c.id_c = v.id_c
-     left join p_fisica pf on pf.id_c = c.id_c
-     left join p_moral pm on pm.id_c = c.id_c
-     left join empleado e on e.id_e = v.id_e
-     where v.fecha >= $1::date and v.fecha < $2::date + 1
-     group by v.folio_v, v.fecha, pf.nombre, pm.razon_social, pf.id_c, e.nombre
-     order by v.fecha desc, v.folio_v desc
+    `with base as (
+       select v.folio_v, to_char(v.fecha, 'YYYY-MM-DD"T"HH24:MI:SS') as fecha,
+              coalesce(pf.nombre, pm.razon_social, 'sin nombre') as cliente,
+              case when pf.id_c is not null then 'fisica' else 'moral' end as tipo_cliente,
+              coalesce(e.nombre, 'sin registro') as empleado,
+              string_agg(p.descripcion, ', ' order by p.descripcion) as productos,
+              sum(dv.cantidad * dv.precio_unitario) as total
+       from venta v
+       join detalle_venta dv on dv.folio_v = v.folio_v
+       join producto p on p.codigo = dv.codigo
+       left join cliente c on c.id_c = v.id_c
+       left join p_fisica pf on pf.id_c = c.id_c
+       left join p_moral pm on pm.id_c = c.id_c
+       left join empleado e on e.id_e = v.id_e
+       where v.fecha >= $1::date and v.fecha < $2::date + 1
+       group by v.folio_v, v.fecha, pf.nombre, pm.razon_social, pf.id_c, e.nombre
+     )
+     select *, count(*) over ()::int as total_filas
+     from base
+     where $5::text is null
+        or cast(folio_v as text) ilike $5
+        or lower(cliente) ilike $5
+        or lower(empleado) ilike $5
+        or lower(productos) ilike $5
+     order by fecha desc, folio_v desc
      limit $3 offset $4`,
-    [desde, hasta, limite, offset],
+    [desde, hasta, limite, offset, filtro],
   );
   return {
     total: filas[0]?.total_filas ?? 0,

@@ -153,3 +153,111 @@ export async function diasConVentas(q, { desde, hasta }) {
   for (const f of filas) dias[f.dia] = f.ventas;
   return dias;
 }
+
+// Analítica filtrada para gráficas y rankings dentro de la pantalla de Ventas.
+export async function analitica(q, opciones) {
+  const { where, valores } = filtros(opciones);
+  const diasRango = Math.max(
+    1,
+    Math.round((Date.parse(`${opciones.hasta}T00:00:00Z`) - Date.parse(`${opciones.desde}T00:00:00Z`)) / 86_400_000) + 1,
+  );
+  const paso = diasRango <= 92 ? 'day' : diasRango <= 400 ? 'week' : 'month';
+  const granularidad = { day: 'dia', week: 'semana', month: 'mes' }[paso];
+
+  const [serieRows, horasRows, empRows, cliRows, prodRows, maxRow] = await Promise.all([
+    q(
+      `with v_f as (
+         select v.folio_v, v.fecha ${FROM_VENTA} ${where}
+       )
+       select to_char(date_trunc('${paso}', v_f.fecha)::date, 'YYYY-MM-DD') as periodo,
+              count(distinct v_f.folio_v)::int as ventas,
+              coalesce(sum(dv.cantidad * dv.precio_unitario), 0) as ingresos
+       from v_f
+       join detalle_venta dv on dv.folio_v = v_f.folio_v
+       group by 1
+       order by 1`,
+      valores,
+    ),
+    q(
+      `with v_f as (select v.folio_v, v.fecha ${FROM_VENTA} ${where})
+       select extract(hour from v_f.fecha)::int as hora, count(*)::int as ventas
+       from v_f
+       group by 1
+       order by 1`,
+      valores,
+    ),
+    q(
+      `with v_f as (select v.folio_v, coalesce(e.nombre, 'sin registro') as empleado ${FROM_VENTA} ${where})
+       select v_f.empleado as nombre,
+              count(distinct v_f.folio_v)::int as ventas,
+              coalesce(sum(dv.cantidad * dv.precio_unitario), 0) as monto
+       from v_f
+       join detalle_venta dv on dv.folio_v = v_f.folio_v
+       group by 1
+       order by 3 desc
+       limit 8`,
+      valores,
+    ),
+    q(
+      `with v_f as (
+         select v.folio_v, coalesce(pf.nombre, pm.razon_social, 'público en general') as cliente,
+                case when pm.id_c is not null then 'moral' else 'fisica' end as tipo
+         ${FROM_VENTA} ${where}
+       )
+       select v_f.cliente as nombre, v_f.tipo,
+              count(distinct v_f.folio_v)::int as ventas,
+              coalesce(sum(dv.cantidad * dv.precio_unitario), 0) as monto
+       from v_f
+       join detalle_venta dv on dv.folio_v = v_f.folio_v
+       group by 1, 2
+       order by 4 desc
+       limit 6`,
+      valores,
+    ),
+    q(
+      `with v_f as (select v.folio_v ${FROM_VENTA} ${where})
+       select p.codigo, p.descripcion, p.unidad_medida,
+              sum(dv.cantidad) as cantidad,
+              sum(dv.cantidad * dv.precio_unitario) as importe
+       from v_f
+       join detalle_venta dv on dv.folio_v = v_f.folio_v
+       join producto p on p.codigo = dv.codigo
+       group by p.codigo, p.descripcion, p.unidad_medida
+       order by 5 desc
+       limit 6`,
+      valores,
+    ),
+    q(
+      `with v_f as (select v.folio_v ${FROM_VENTA} ${where})
+       select max(t.total) as max_total
+       from v_f
+       left join lateral (
+         select sum(dv.cantidad * dv.precio_unitario) as total
+         from detalle_venta dv where dv.folio_v = v_f.folio_v
+       ) t on true`,
+      valores,
+    ),
+  ]);
+
+  return {
+    ventaMaxima: num(maxRow[0]?.max_total ?? 0),
+    serie: {
+      granularidad,
+      puntos: serieRows.map((f) => ({
+        periodo: f.periodo,
+        ventas: f.ventas,
+        ingresos: Math.round(num(f.ingresos) * 100) / 100,
+      })),
+    },
+    horas: horasRows.map((f) => ({ hora: f.hora, ventas: f.ventas })),
+    porEmpleado: empRows.map((f) => ({ nombre: f.nombre, ventas: f.ventas, monto: Math.round(num(f.monto) * 100) / 100 })),
+    topClientes: cliRows.map((f) => ({ nombre: f.nombre, tipo: f.tipo, ventas: f.ventas, monto: Math.round(num(f.monto) * 100) / 100 })),
+    topProductos: prodRows.map((f) => ({
+      codigo: f.codigo,
+      descripcion: f.descripcion,
+      unidadMedida: f.unidad_medida,
+      cantidad: num(f.cantidad),
+      importe: Math.round(num(f.importe) * 100) / 100,
+    })),
+  };
+}

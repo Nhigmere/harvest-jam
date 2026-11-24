@@ -2,6 +2,7 @@
 import { useId } from 'react';
 import { LuChevronLeft, LuChevronRight, LuCircleAlert, LuCircleCheck, LuSearch, LuTriangleAlert, LuX } from 'react-icons/lu';
 import { numero } from '../formato.js';
+import { FrascoVacioMermelada, OrnamentoMermelada } from './ArteFruteria.jsx';
 import { ContadorAnimado } from './Efectos.jsx';
 
 export function Boton({ variante = 'secundario', talla = 'normal', icono: Icono, cargando = false, children, className = '', ...resto }) {
@@ -131,11 +132,9 @@ export function Panel({ titulo, descripcion, acciones, children, className = '',
 export function Vacio({ icono: Icono, titulo, children, accion }) {
   return (
     <div className="vacio">
-      {Icono && (
-        <span className="vacio__icono-caja" aria-hidden="true">
-          <Icono className="vacio__icono" />
-        </span>
-      )}
+      <span className="vacio__icono-caja" aria-hidden="true">
+        {Icono ? <Icono className="vacio__icono" /> : <FrascoVacioMermelada />}
+      </span>
       <p className="vacio__titulo">{titulo}</p>
       {children && <p className="vacio__texto">{children}</p>}
       {accion}
@@ -185,6 +184,7 @@ export function Paginacion({ pagina, limite, total, alCambiar }) {
 export function CabeceraPagina({ titulo, descripcion, acciones, children }) {
   return (
     <header className="cabecera-pagina">
+      <OrnamentoMermelada variante="cabecera" tema={titulo} />
       <div className="cabecera-pagina__texto">
         <h1>{titulo}</h1>
         {descripcion && <p className="cabecera-pagina__descripcion">{descripcion}</p>}

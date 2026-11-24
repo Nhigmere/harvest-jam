@@ -192,10 +192,11 @@ body {
   opacity: 0;
   background: radial-gradient(
     420px circle at var(--mx, 50%) var(--my, 50%),
-    rgba(212, 175, 106, 0.08),
-    transparent 62%
+    rgba(212, 175, 106, 0.14) 0%,
+    rgba(201, 74, 93, 0.065) 40%,
+    transparent 68%
   );
-  transition: opacity 280ms var(--ease-luxury);
+  transition: opacity 260ms var(--ease-luxury);
 }
 
 .lujo-brillo:hover::before {
@@ -203,7 +204,166 @@ body {
 }
 
 .glass-card:hover {
-  border-color: var(--glass-border-strong);
+  border-color: rgba(212, 175, 106, 0.28);
+}
+
+/* --- Reflector global Harvest JAM (sigue suavemente el cursor por toda la app) --- */
+.app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    520px circle at var(--gx, 50vw) var(--gy, 22vh),
+    rgba(212, 175, 106, 0.065) 0%,
+    rgba(201, 74, 93, 0.032) 38%,
+    transparent 70%
+  );
+}
+
+/* Reflector interactivo en tarjetas, botones, tabs, fichas y recuadros de todo el sistema */
+.ficha,
+.producto-pos,
+.vc-ticket-card,
+.vc-hero__card,
+.vc-ranking-fila,
+.inicio-dock__btn,
+.inicio-hero__stat,
+.inicio-tab,
+.inicio-faltante,
+.dss-kpi-btn,
+.dss-kpi-item,
+.dss-escenario,
+.dss-liq-card,
+.dss-foto-fila,
+.dss-tab-btn,
+.rep-insight,
+.rep-mini-card,
+.boton--secundario {
+  position: relative;
+}
+
+.ficha::after,
+.producto-pos::after,
+.vc-ticket-card::after,
+.vc-hero__card::after,
+.vc-ranking-fila::after,
+.inicio-dock__btn::after,
+.inicio-hero__stat::after,
+.inicio-tab::after,
+.inicio-faltante::after,
+.dss-kpi-item::after,
+.dss-escenario::after,
+.dss-liq-card::after,
+.dss-foto-fila::after,
+.dss-tab-btn::after,
+.rep-insight::after,
+.rep-mini-card::after,
+.boton--secundario::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    240px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(243, 217, 151, 0.16) 0%,
+    rgba(201, 74, 93, 0.075) 45%,
+    transparent 74%
+  );
+  transition: opacity 240ms var(--ease-luxury);
+}
+
+.ficha:hover::after,
+.producto-pos:hover::after,
+.vc-ticket-card:hover::after,
+.vc-hero__card:hover::after,
+.vc-ranking-fila:hover::after,
+.inicio-dock__btn:hover::after,
+.inicio-hero__stat:hover::after,
+.inicio-tab:hover::after,
+.inicio-faltante:hover::after,
+.dss-kpi-item:hover::after,
+.dss-escenario:hover::after,
+.dss-liq-card:hover::after,
+.dss-foto-fila:hover::after,
+.dss-tab-btn:hover::after,
+.rep-insight:hover::after,
+.rep-mini-card:hover::after,
+.boton--secundario:hover::after {
+  opacity: 1;
+}
+
+/* Reflector suave en la barra lateral, modales y drawers */
+.menu::before,
+.modal::before,
+.drawer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    360px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(212, 175, 106, 0.11) 0%,
+    rgba(201, 74, 93, 0.05) 44%,
+    transparent 70%
+  );
+  transition: opacity 280ms var(--ease-luxury);
+}
+
+.menu:hover::before,
+.modal:hover::before,
+.drawer:hover::before {
+  opacity: 1;
+}
+
+/* Iluminación dorada-rubí en TODOS los campos de entrada y buscadores al pasar cursor o escribir */
+.entrada,
+select.entrada,
+textarea.entrada {
+  transition:
+    border-color 200ms var(--ease-snappy),
+    box-shadow 240ms var(--ease-luxury),
+    background-color 200ms var(--ease-snappy);
+}
+
+.entrada:hover:not(:disabled) {
+  border-color: rgba(212, 175, 106, 0.42);
+  box-shadow: 0 0 16px -4px rgba(212, 175, 106, 0.28);
+}
+
+.entrada:focus:not(:disabled) {
+  border-color: rgba(243, 217, 151, 0.78);
+  box-shadow:
+    0 0 0 3px rgba(212, 175, 106, 0.18),
+    0 0 22px -4px rgba(201, 74, 93, 0.34);
+}
+
+.buscador {
+  border-radius: var(--radius-control);
+  transition: box-shadow 240ms var(--ease-luxury);
+}
+
+.buscador:hover {
+  box-shadow: 0 0 18px -5px rgba(212, 175, 106, 0.32);
+}
+
+.buscador:focus-within {
+  box-shadow:
+    0 0 20px -4px rgba(212, 175, 106, 0.42),
+    0 0 26px -8px rgba(201, 74, 93, 0.34);
+}
+
+@media print {
+  .app::before,
+  .menu::before,
+  .lujo-brillo::before {
+    display: none !important;
+  }
 }
 
 /* Scrollbar personalizado de la paleta */
