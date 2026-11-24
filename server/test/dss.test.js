@@ -101,3 +101,40 @@ test('Escenarios comparan 4 casos y el orden es reproducible', () => {
   const r2 = evaluarReabastecimiento([prodEjemploGuia]);
   assert.deepEqual(r1.recomendaciones, r2.recomendaciones);
 });
+
+test('Liquidación por merma sugiere rebaja progresiva y jamás por debajo del costo', () => {
+  // Suave: cobertura 12 d vs vida 10 d (ratio 1.2) → conserva 60% del margen
+  const suave = {
+    ...prodEjemploGuia, codigo: 5060, descripcion: 'Pera', existencia: 60,
+    demandaDiariaBase: 5, vidaUtilDias: 10, precioC: 20, precioV: 30,
+  };
+  // Rápida: cobertura 20 d vs vida 10 d (ratio 2.0) → conserva 25% del margen
+  const rapida = {
+    ...prodEjemploGuia, codigo: 5061, descripcion: 'Durazno', existencia: 100,
+    demandaDiariaBase: 5, vidaUtilDias: 10, precioC: 20, precioV: 30,
+  };
+  // Remate: cobertura 35 d vs vida 10 d (ratio 3.5) → remate exactamente al costo ($20)
+  const remate = {
+    ...prodEjemploGuia, codigo: 5062, descripcion: 'Cilantro', existencia: 175,
+    demandaDiariaBase: 5, vidaUtilDias: 10, precioC: 20, precioV: 30,
+  };
+
+  const res = evaluarReabastecimiento([suave, rapida, remate]);
+  const mapa = new Map(res.recomendaciones.map((r) => [r.codigo, r.liquidacion]));
+
+  assert.equal(mapa.get(5060).nivel, 'suave');
+  assert.equal(mapa.get(5060).precioSugerido, 26); // 20 + 10*0.6 = 26
+  assert.ok(mapa.get(5060).precioSugerido >= 20);
+
+  assert.equal(mapa.get(5061).nivel, 'rapida');
+  assert.equal(mapa.get(5061).precioSugerido, 22.5); // 20 + 10*0.25 = 22.5
+  assert.ok(mapa.get(5061).precioSugerido >= 20);
+
+  assert.equal(mapa.get(5062).nivel, 'remate');
+  assert.equal(mapa.get(5062).precioSugerido, 20); // exactamente al costo: cero pérdida
+  assert.equal(mapa.get(5062).gananciaUnitaria, 0);
+  assert.equal(mapa.get(5062).unidadesEnRiesgo, 125); // 175 - 5*10
+  assert.equal(mapa.get(5062).capitalEnRiesgo, 2500);
+  assert.equal(mapa.get(5062).recuperacionEstimada, 2500);
+  assert.ok(res.resumen.capitalEnRiesgoMerma > 0);
+});

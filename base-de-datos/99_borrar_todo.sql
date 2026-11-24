@@ -1,20 +1,43 @@
 -- =====================================================================
--- HARVEST JAM · 99_borrar_todo.sql — Borra el esquema para empezar de cero
+-- HARVEST JAM · 99_borrar_todo.sql — Borra todo para empezar de cero
 --
--- Elimina tablas, funciones, triggers y datos del esquema fruteria.
--- Los roles y usuarios de PostgreSQL NO se borran (son de todo el
--- servidor); 04_roles.sql los reutiliza si ya existen.
+-- Elimina el esquema analítico etl (corridas, cambios, rechazos,
+-- parámetros, ventas limpias, resumen y fotos DSS), el esquema
+-- operativo fruteria (tablas, funciones, triggers y datos), así como
+-- los usuarios y roles de Harvest JAM en PostgreSQL.
+-- Asegúrate de cerrar antes cualquier sesión activa con esos usuarios.
 -- =====================================================================
 
+drop schema if exists etl cascade;
 drop schema if exists fruteria cascade;
 
--- Si también quieres borrar los roles y usuarios, descomenta esto
--- (antes deben quitarse sus permisos en todas las bases donde existan):
---
--- drop owned by francisco_mendoza, uviel_mata, robert_de_niro, manuel_gomez,
---               ricardo_valencia, juan_gonzales, laura_perez;
--- drop user if exists francisco_mendoza, uviel_mata, robert_de_niro, manuel_gomez,
---                     ricardo_valencia, juan_gonzales, laura_perez;
--- drop role if exists administrador, gerente, cajero, comprador, admin_clientes, contador;
+do $$
+declare
+    u text;
+    r text;
+begin
+    foreach u in array array[
+        'francisco_mendoza', 'uviel_mata', 'robert_de_niro',
+        'manuel_gomez', 'ricardo_valencia', 'juan_gonzales', 'laura_perez'
+    ]
+    loop
+        if exists (select 1 from pg_roles where rolname = u) then
+            execute format('drop owned by %I cascade', u);
+            execute format('drop user if exists %I', u);
+        end if;
+    end loop;
 
-select 'esquema fruteria eliminado' as estado;
+    foreach r in array array[
+        'administrador', 'gerente', 'cajero', 'comprador', 'admin_clientes', 'contador'
+    ]
+    loop
+        if exists (select 1 from pg_roles where rolname = r) then
+            execute format('drop owned by %I cascade', r);
+            execute format('drop role if exists %I', r);
+        end if;
+    end loop;
+end
+$$;
+
+select 'esquemas etl, fruteria, usuarios y roles eliminados' as estado;
+

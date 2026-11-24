@@ -258,3 +258,72 @@ export async function listarCorridasDss(q, limite = 12) {
     fueraPresupuesto: f.fuera_presupuesto,
   }));
 }
+
+export async function obtenerCorridaDss(q, id) {
+  const [c] = await q(
+    `select id, to_char(fecha_hora, 'YYYY-MM-DD"T"HH24:MI:SS') as fecha_hora,
+            ejecutado_por, version_parametros, escenario,
+            factor_demanda, extra_entrega, presupuesto,
+            to_char(fecha_corte, 'YYYY-MM-DD') as fecha_corte,
+            total_critica, total_alta, total_media, total_baja, total_sobre, total_insuficientes,
+            monto_sugerido, monto_cubierto, fuera_presupuesto
+     from etl.dss_corridas
+     where id = $1`,
+    [id],
+  );
+  if (!c) return null;
+
+  const recs = await q(
+    `select r.codigo, r.descripcion, r.prioridad, r.es_emergencia, r.puntaje,
+            r.cantidad_sugerida, r.costo_estimado, r.en_presupuesto, r.explicacion,
+            coalesce(p.unidad_medida, 'unidad') as unidad_medida
+     from etl.dss_recomendaciones r
+     left join fruteria.producto p on p.codigo = r.codigo
+     where r.corrida_id = $1
+     order by
+       case r.prioridad
+         when 'critica' then 1
+         when 'alta' then 2
+         when 'media' then 3
+         when 'baja' then 4
+         when 'sobreabastecido' then 5
+         else 6
+       end,
+       r.puntaje desc nulls last,
+       r.codigo asc`,
+    [id],
+  );
+
+  return {
+    id: Number(c.id),
+    fechaHora: c.fecha_hora,
+    ejecutadoPor: c.ejecutado_por,
+    versionParametros: c.version_parametros,
+    escenario: c.escenario,
+    factorDemanda: num(c.factor_demanda),
+    extraEntrega: c.extra_entrega,
+    presupuesto: num(c.presupuesto),
+    fechaCorte: c.fecha_corte,
+    totalCritica: c.total_critica,
+    totalAlta: c.total_alta,
+    totalMedia: c.total_media,
+    totalBaja: c.total_baja,
+    totalSobre: c.total_sobre,
+    totalInsuficientes: c.total_insuficientes,
+    montoSugerido: num(c.monto_sugerido),
+    montoCubierto: num(c.monto_cubierto),
+    fueraPresupuesto: c.fuera_presupuesto,
+    recomendaciones: recs.map((r) => ({
+      codigo: r.codigo,
+      descripcion: r.descripcion,
+      unidadMedida: r.unidad_medida,
+      prioridad: r.prioridad,
+      esEmergencia: r.es_emergencia,
+      puntaje: num(r.puntaje),
+      cantidadSugerida: num(r.cantidad_sugerida),
+      costoEstimado: num(r.costo_estimado),
+      enPresupuesto: r.en_presupuesto,
+      explicacion: r.explicacion,
+    })),
+  };
+}

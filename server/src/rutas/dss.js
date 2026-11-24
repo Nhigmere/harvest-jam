@@ -83,4 +83,16 @@ router.post('/guardar-corrida', requiere(P.EJECUTAR_DSS), ruta(async (req, res) 
   res.status(201).json({ ...guardada, escenario, resumen: evaluacion.resumen });
 }));
 
+router.get('/corridas/:id', requiere(P.VER_DSS), ruta(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'Identificador de foto inválido.' });
+  }
+  const corrida = await dssDao.obtenerCorridaDss(req.consultar, id);
+  if (!corrida) {
+    return res.status(404).json({ error: 'No se encontró la foto de decisión solicitada.' });
+  }
+  return res.json(corrida);
+}));
+
 export default router;

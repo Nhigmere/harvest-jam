@@ -78,6 +78,11 @@ function construirExplicacion(item, params) {
     );
   } else if (prioridad === 'sobreabastecido') {
     partes.push(`Riesgo de merma: la cobertura (${diasCobertura.toFixed(1)} d) supera su vida útil (${vidaUtilDias} d). Se recomienda no comprar y promover su salida.`);
+    if (item.liquidacion) {
+      partes.push(
+        `Sugerencia de liquidación (${item.liquidacion.etiqueta}): bajar de $${item.liquidacion.precioActual.toFixed(2)} a $${item.liquidacion.precioSugerido.toFixed(2)} (costo $${item.liquidacion.precioCosto.toFixed(2)}, sin pérdida) para mover ${item.liquidacion.unidadesEnRiesgo} ${unidadMedida} en riesgo.`,
+      );
+    }
   } else if (existencia < stockMinimo) {
     partes.push(`Existencia por debajo del stock mínimo configurado (${stockMinimo} ${unidadMedida}).`);
   }
@@ -95,6 +100,65 @@ function construirExplicacion(item, params) {
 
   partes.push(`Parámetros ${params.version}. Recomendación sujeta a revisión humana.`);
   return partes.join(' ');
+}
+
+export function calcularLiquidacionMerma(p) {
+  const existencia = Number(p.existencia || 0);
+  const vidaUtil = Number(p.vidaUtilDias || 0);
+  const cobertura = p.diasCobertura !== null && p.diasCobertura !== undefined ? Number(p.diasCobertura) : null;
+  if (existencia <= 0 || vidaUtil <= 0 || cobertura === null || cobertura <= vidaUtil) return null;
+
+  const precioCosto = red(Math.max(Number(p.precioC || 0), 0), 2);
+  const precioActual = red(Math.max(Number(p.precioV || 0), 0), 2);
+  const utilidad = Math.max(precioActual - precioCosto, 0);
+  const ratioExceso = red(cobertura / vidaUtil, 2);
+  const excesoDias = red(Math.max(0, cobertura - vidaUtil), 1);
+
+  let nivel = 'suave';
+  let etiqueta = 'Promoción suave';
+  let factorMargen = 0.6;
+  if (ratioExceso > 2.5) {
+    nivel = 'remate';
+    etiqueta = 'Remate al costo';
+    factorMargen = 0;
+  } else if (ratioExceso > 1.5) {
+    nivel = 'rapida';
+    etiqueta = 'Oferta rápida';
+    factorMargen = 0.25;
+  }
+
+  // Garantía estricta de cero pérdida: el precio sugerido nunca baja del costo de compra.
+  const crudo = precioCosto + utilidad * factorMargen;
+  const candidato = factorMargen === 0 ? precioCosto : Math.ceil(crudo * 2) / 2;
+  const precioSugerido = precioActual > 0
+    ? red(Math.max(precioCosto, Math.min(precioActual, candidato)), 2)
+    : precioCosto;
+
+  const descuentoPesos = red(Math.max(0, precioActual - precioSugerido), 2);
+  const descuentoPct = precioActual > 0 ? red((descuentoPesos / precioActual) * 100, 1) : 0;
+  const gananciaUnitaria = red(Math.max(0, precioSugerido - precioCosto), 2);
+
+  const demanda = Number(p.demandaDiaria || 0);
+  const vendibleEnVida = demanda * vidaUtil;
+  const unidadesEnRiesgo = red(Math.max(0, existencia - vendibleEnVida), 3);
+  const capitalEnRiesgo = red(unidadesEnRiesgo * precioCosto, 2);
+  const recuperacionEstimada = red(unidadesEnRiesgo * precioSugerido, 2);
+
+  return {
+    nivel,
+    etiqueta,
+    precioActual,
+    precioCosto,
+    precioSugerido,
+    descuentoPesos,
+    descuentoPct,
+    gananciaUnitaria,
+    unidadesEnRiesgo,
+    capitalEnRiesgo,
+    recuperacionEstimada,
+    excesoDias,
+    ratioExceso,
+  };
 }
 
 export function evaluarReabastecimiento(productos, opciones = {}) {
@@ -195,6 +259,7 @@ export function evaluarReabastecimiento(productos, opciones = {}) {
     }
 
     const costoEstimado = red(cantidadSugerida * Number(p.precioC || 0), 2);
+    const liquidacion = prioridad === 'sobreabastecido' ? calcularLiquidacionMerma(p) : null;
 
     return {
       ...p,
@@ -212,6 +277,7 @@ export function evaluarReabastecimiento(productos, opciones = {}) {
       costoEstimado,
       limitadaPorVidaUtil,
       enPresupuesto: true,
+      liquidacion,
     };
   });
 
@@ -265,6 +331,14 @@ export function evaluarReabastecimiento(productos, opciones = {}) {
   const coberturaPromedio = conCobertura.length
     ? red(conCobertura.reduce((s, x) => s + x.diasCobertura, 0) / conCobertura.length, 1)
     : null;
+  const capitalEnRiesgoMerma = red(
+    finales.reduce((s, x) => s + (x.liquidacion?.capitalEnRiesgo ?? 0), 0),
+    2,
+  );
+  const recuperacionMerma = red(
+    finales.reduce((s, x) => s + (x.liquidacion?.recuperacionEstimada ?? 0), 0),
+    2,
+  );
 
   return {
     parametros: params,
@@ -277,6 +351,8 @@ export function evaluarReabastecimiento(productos, opciones = {}) {
       saldoPresupuesto: presupuestoNum !== null ? red(presupuestoNum - montoCubierto, 2) : null,
       fueraPresupuesto,
       coberturaPromedio,
+      capitalEnRiesgoMerma,
+      recuperacionMerma,
     },
     recomendaciones: finales,
   };
